@@ -1086,6 +1086,7 @@ EduForge:`;
       
       setMessages(prev => [...prev, { text: aiReply.trim(), sender: 'ai' }]);
     } catch (e) {
+      console.log(e)
       setMessages(prev => [...prev, { text: "Network constraint detected. Please check your internet connection.", sender: 'ai' }]);
     } finally {
       setIsTyping(false);
@@ -2362,7 +2363,7 @@ const ActiveTestScreen = ({ navigate, context, onTestComplete }) => {
   const apiKey = process.env.REACT_APP_GEMINI_API_KEY;
   
   // Naya Stable Model
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${apiKey}`;
+  const url = `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
   
   const isTheory = q.type === 'theory';
   const isHindi = /[\u0900-\u097F]/.test(q.text) || String(q.text).toLowerCase().includes('hindi');
