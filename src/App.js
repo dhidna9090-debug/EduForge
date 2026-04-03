@@ -2359,7 +2359,7 @@ const ActiveTestScreen = ({ navigate, context, onTestComplete }) => {
 };
  const fetchAiForExplanation = async (q, correctAnsText, fallbackExp) => {
   // Aapki Gemini API Key (Screenshot wali)
-  const apiKey = "AIzaSyBsbaozbt3qknzDE2GdnUDOgfTB0jZwt9c"; 
+  const apiKey = process.env.REACT_APP_GEMINI_API_KEY;
   
   // Naya Stable Model
   const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${AIzaSyBsbaozbt3qknzDE2GdnUDOgfTB0jZwt9c}`;
