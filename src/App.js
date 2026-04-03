@@ -1060,7 +1060,7 @@ const AuthScreen = ({ onLogin }) => {
     setIsTyping(true);
 
     try {
-      const apiKey = "AIzaSyBsbaozbt3qknzDE2GdnUDOgfTB0jZwt9c"; 
+      const apiKey = process.env.REACT_APP_GEMINI_API_KEY; 
       const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
       
       const chatHistory = messages.map(m => `${m.sender === 'ai' ? 'EduForge' : 'Student'}: ${m.text}`).join('\n');
