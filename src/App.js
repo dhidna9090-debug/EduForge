@@ -2359,6 +2359,7 @@ const ActiveTestScreen = ({ navigate, context, onTestComplete }) => {
     </div>
   );
 };
+/*
  const fetchAiForExplanation = async (q, correctAnsText, fallbackExp) => {
   // Aapki Gemini API Key (Screenshot wali)
   const apiKey = process.env.REACT_APP_GEMINI_API_KEY;
@@ -2403,61 +2404,117 @@ const ActiveTestScreen = ({ navigate, context, onTestComplete }) => {
     return `🔴 NETWORK ERROR: ${err.message}`;
   }
 };
+*/
+const fetchAiForExplanation = async (q, correctAnsText, fallbackExp) => {
+  // 1. Groq API Key (Apne Netlify/Local .env mein REACT_APP_GROQ_API_KEY zaroor daalein)
+  const apiKey = process.env.REACT_APP_GROQ_API_KEY;
+  
+  // 2. Aapka Purana Language Logic (Ekdum Same)
+  const isTheory = q.type === 'theory';
+  const isHindi = /[\u0900-\u097F]/.test(q.text) || String(q.text).toLowerCase().includes('hindi');
+  
+  const langInstruction = isHindi 
+    ? "Answer strictly in Hindi." 
+    : "Answer strictly in English.";
+
+  // 3. Aapka Purana Prompt Template
+  const promptText = `Explain why the answer is correct. 
+  Question: "${q.text}"
+  Correct Answer: "${correctAnsText}"
+  ${langInstruction}`;
+
+  try {
+    // 4. Groq API Call (Rocket Speed 🚀)
+    const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+      method: 'POST',
+      headers: { 
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}` // Groq mein API key yahan jati hai
+      },
+      body: JSON.stringify({
+        messages: [
+          { role: "system", content: "You are a helpful and expert educational tutor." },
+          { role: "user", content: promptText }
+        ],
+        model: "llama3-8b-8192", // Groq ka superfast model
+        temperature: 0.5,
+        max_tokens: 500
+      })
+    });
+    
+    // 5. Error Handling
+    if (!response.ok) {
+      const errorData = await response.json();
+      return `🔴 GROQ ERROR: ${errorData.error?.message || response.statusText} (Status: ${response.status})`; 
+    }
+    
+    // 6. Success Response
+    const data = await response.json();
+    console.log("Groq API Response:", data);
+    
+    // Groq ka data structure thoda alag hota hai Gemini se
+    return data.choices?.[0]?.message?.content || "No text generated.";
+    
+  } catch (err) {
+    console.log("Fetch Error:", err);
+    return `🔴 NETWORK ERROR: ${err.message}`;
+  }
+};
 
 const LiveAIExplanation = ({ q, correctAnsText, fallbackExp }) => {
-  const [aiText, setAiText] = useState("");
-  const [status, setStatus] = useState("idle"); 
+//   const [aiText, setAiText] = useState("");
+//   const [status, setStatus] = useState("idle"); 
 
-  const handleFetchAi = async () => {
-    setStatus("loading");
-    // Button click hone par direct call hogi
-    const text = await fetchAiForExplanation(q, correctAnsText, fallbackExp);
-    setAiText(text);
-    setStatus("done");
-  };
+//   const handleFetchAi = async () => {
+//     setStatus("loading");
+//     // Button click hone par direct call hogi
+//     const text = await fetchAiForExplanation(q, correctAnsText, fallbackExp);
+//     setAiText(text);
+//     setStatus("done");
+//   };
 
-  return (
-    <div className="bg-indigo-500/5 border border-indigo-500/20 p-5 rounded-xl mt-4">
-      {/* Standard Explanation Wala Hissa */}
-      <div className="mb-4">
-        <p className="text-sm font-bold text-slate-400 mb-2">Standard Explanation:</p>
-        <div className="text-base text-slate-200 leading-relaxed whitespace-pre-wrap antialiased">
-          <CleanTextFormatter text={fallbackExp || "Detailed explanation not available."} />
-        </div>
-      </div>
+//   return (
+//     <div className="bg-indigo-500/5 border border-indigo-500/20 p-5 rounded-xl mt-4">
+//       {/* Standard Explanation Wala Hissa */}
+//       <div className="mb-4">
+//         <p className="text-sm font-bold text-slate-400 mb-2">Standard Explanation:</p>
+//         <div className="text-base text-slate-200 leading-relaxed whitespace-pre-wrap antialiased">
+//           <CleanTextFormatter text={fallbackExp || "Detailed explanation not available."} />
+//         </div>
+//       </div>
       
-      {/* Live AI Explanation Wala Hissa */}
-      <div className="pt-4 border-t border-indigo-500/20">
-        <p className="text-sm font-bold text-indigo-400 mb-3 flex items-center">
-          <Zap className="w-4 h-4 mr-2 text-amber-400" /> Live AI Explanation (Internet Active)
-        </p>
+//       {/* Live AI Explanation Wala Hissa */}
+//       <div className="pt-4 border-t border-indigo-500/20">
+//         <p className="text-sm font-bold text-indigo-400 mb-3 flex items-center">
+//           <Zap className="w-4 h-4 mr-2 text-amber-400" /> Live AI Explanation (Internet Active)
+//         </p>
         
-        {status === "idle" && (
-          <button 
-            onClick={handleFetchAi}
-            className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 rounded-lg text-sm text-white font-medium transition-colors"
-          >
-            Generate AI Insight
-          </button>
-        )}
+//         {status === "idle" && (
+//           <button 
+//             onClick={handleFetchAi}
+//             className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 rounded-lg text-sm text-white font-medium transition-colors"
+//           >
+//             Generate AI Insight
+//           </button>
+//         )}
 
-        {status === "loading" && (
-          <div className="animate-pulse space-y-3">
-             <div className="h-3 bg-indigo-500/20 rounded w-3/4"></div>
-             <div className="h-3 bg-indigo-500/20 rounded w-full"></div>
-             <div className="h-3 bg-indigo-500/20 rounded w-5/6"></div>
-          </div>
-        )}
+//         {status === "loading" && (
+//           <div className="animate-pulse space-y-3">
+//              <div className="h-3 bg-indigo-500/20 rounded w-3/4"></div>
+//              <div className="h-3 bg-indigo-500/20 rounded w-full"></div>
+//              <div className="h-3 bg-indigo-500/20 rounded w-5/6"></div>
+//           </div>
+//         )}
 
-        {status === "done" && (
-          <div className="text-base text-white leading-relaxed whitespace-pre-wrap font-sans antialiased tracking-wide">
-             <CleanTextFormatter text={aiText} />
-          </div>
-        )}
-      </div>
-    </div>
-  );
-};
+//         {status === "done" && (
+//           <div className="text-base text-white leading-relaxed whitespace-pre-wrap font-sans antialiased tracking-wide">
+//              <CleanTextFormatter text={aiText} />
+//           </div>
+//         )}
+//       </div>
+//     </div>
+//   );
+// }; 
 
 const TestResultScreen = ({ navigate, context, onRoadmapGenerate, userData }) => {
   const safeContext = context || { exam: '', sub: '', score: '0.00', totalAttempted: 0, maxScore: 100, testName: 'Test', subjectiveEvaluated: false, questions: [], answers: {}, correctCount: 0, incorrectCount: 0, unattemptedCount: 100, isDiagnostic: false };
