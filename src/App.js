@@ -1080,12 +1080,14 @@ EduForge:`;
         body: JSON.stringify(payload)
       });
       
-      if (!response.ok) throw new Error('API Error');
+      // if (!response.ok) throw new Error('API Error');
       const data = await response.json();
+      console.log(data)
       const aiReply = data.candidates?.[0]?.content?.parts?.[0]?.text || "I'm having trouble connecting right now. Please try again.";
       
       setMessages(prev => [...prev, { text: aiReply.trim(), sender: 'ai' }]);
     } catch (e) {
+      console.log(e)
       setMessages(prev => [...prev, { text: "Network constraint detected. Please check your internet connection.", sender: 'ai' }]);
     } finally {
       setIsTyping(false);
