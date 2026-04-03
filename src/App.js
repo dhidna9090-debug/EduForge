@@ -1080,7 +1080,7 @@ EduForge:`;
         body: JSON.stringify(payload)
       });
       
-      if (!response.ok) throw new Error('API Error');
+      // if (!response.ok) throw new Error('API Error');
       const data = await response.json();
       const aiReply = data.candidates?.[0]?.content?.parts?.[0]?.text || "I'm having trouble connecting right now. Please try again.";
       
