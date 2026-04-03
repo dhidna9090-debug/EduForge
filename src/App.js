@@ -2404,7 +2404,7 @@ const ActiveTestScreen = ({ navigate, context, onTestComplete }) => {
   }
 };
 
-const LiveAIExplanation = ({ q, correctAnsText, fallbackExp }) => {// =================================================================
+// =================================================================
 // 1. GLOBAL QUEUE SYSTEM (Ishe waisa hi rehne dein)
 // =================================================================
 let fetchQueue = Promise.resolve();
