@@ -1061,7 +1061,7 @@ const AuthScreen = ({ onLogin }) => {
 
     try {
       const apiKey = "AIzaSyBsbaozbt3qknzDE2GdnUDOgfTB0jZwt9c"; 
-      const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
       
       const chatHistory = messages.map(m => `${m.sender === 'ai' ? 'EduForge' : 'Student'}: ${m.text}`).join('\n');
       const prompt = `You are EduForge AI, an expert exam tutor for GATE, UPSC, BPSC, and University exams. Provide helpful, encouraging, and concise responses (max 3-4 sentences). Do not use markdown formatting like ** or *. Plain text only. All content MUST be in English.
@@ -1082,6 +1082,7 @@ EduForge:`;
       
       // if (!response.ok) throw new Error('API Error');
       const data = await response.json();
+      console.log(data)
       const aiReply = data.candidates?.[0]?.content?.parts?.[0]?.text || "I'm having trouble connecting right now. Please try again.";
       
       setMessages(prev => [...prev, { text: aiReply.trim(), sender: 'ai' }]);
