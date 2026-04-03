@@ -2404,84 +2404,54 @@ const ActiveTestScreen = ({ navigate, context, onTestComplete }) => {
   }
 };
 
-// =================================================================
-// 1. GLOBAL QUEUE SYSTEM (Ishe waisa hi rehne dein)
-// =================================================================
-let fetchQueue = Promise.resolve();
-
-const safeFetchAi = (q, correctAnsText, fallbackExp) => {
-  return new Promise((resolve) => {
-    fetchQueue = fetchQueue.then(async () => {
-      // 4 seconds delay
-      await new Promise(res => setTimeout(res, 4000));
-      const result = await fetchAiForExplanation(q, correctAnsText, fallbackExp);
-      resolve(result); 
-    });
-  });
-};
-
-// =================================================================
-// 2. AAPKA ORIGINAL COMPONENT + NAYA LOGIC
-// =================================================================
 const LiveAIExplanation = ({ q, correctAnsText, fallbackExp }) => {
   const [aiText, setAiText] = useState("");
-  const [loading, setLoading] = useState(true);
-  const observerRef = useRef(null);
-  const hasFetched = useRef(false);
+  const [status, setStatus] = useState("idle"); 
 
-  useEffect(() => {
-    if (typeof IntersectionObserver !== 'undefined') {
-      const observer = new IntersectionObserver((entries) => {
-        if (entries[0].isIntersecting && !hasFetched.current) {
-          hasFetched.current = true;
-          setLoading(true);
-          
-          safeFetchAi(q, correctAnsText, fallbackExp).then(text => {
-            setAiText(text);
-            setLoading(false);
-          });
-          
-          observer.disconnect();
-        }
-      }, { threshold: 0.1 });
+  const handleFetchAi = async () => {
+    setStatus("loading");
+    // Button click hone par direct call hogi
+    const text = await fetchAiForExplanation(q, correctAnsText, fallbackExp);
+    setAiText(text);
+    setStatus("done");
+  };
 
-      if (observerRef.current) observer.observe(observerRef.current);
-      return () => observer.disconnect();
-    } else {
-      if (!hasFetched.current) {
-        hasFetched.current = true;
-        setLoading(true);
-        
-        safeFetchAi(q, correctAnsText, fallbackExp).then(text => {
-          setAiText(text);
-          setLoading(false);
-        });
-      }
-    }
-  }, [q, correctAnsText, fallbackExp]);
-
-  // AAPKA ORIGINAL UI YAHAN HAI 👇
   return (
-    <div ref={observerRef} className="bg-indigo-500/5 border border-indigo-500/20 p-5 rounded-xl mt-4">
+    <div className="bg-indigo-500/5 border border-indigo-500/20 p-5 rounded-xl mt-4">
+      {/* Standard Explanation Wala Hissa */}
       <div className="mb-4">
         <p className="text-sm font-bold text-slate-400 mb-2">Standard Explanation:</p>
         <div className="text-base text-slate-200 leading-relaxed whitespace-pre-wrap antialiased">
           <CleanTextFormatter text={fallbackExp || "Detailed explanation not available."} />
         </div>
       </div>
+      
+      {/* Live AI Explanation Wala Hissa */}
       <div className="pt-4 border-t border-indigo-500/20">
         <p className="text-sm font-bold text-indigo-400 mb-3 flex items-center">
           <Zap className="w-4 h-4 mr-2 text-amber-400" /> Live AI Explanation (Internet Active)
         </p>
-        {loading ? (
+        
+        {status === "idle" && (
+          <button 
+            onClick={handleFetchAi}
+            className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 rounded-lg text-sm text-white font-medium transition-colors"
+          >
+            Generate AI Insight
+          </button>
+        )}
+
+        {status === "loading" && (
           <div className="animate-pulse space-y-3">
-            <div className="h-3 bg-indigo-500/20 rounded w-3/4"></div>
-            <div className="h-3 bg-indigo-500/20 rounded w-full"></div>
-            <div className="h-3 bg-indigo-500/20 rounded w-5/6"></div>
+             <div className="h-3 bg-indigo-500/20 rounded w-3/4"></div>
+             <div className="h-3 bg-indigo-500/20 rounded w-full"></div>
+             <div className="h-3 bg-indigo-500/20 rounded w-5/6"></div>
           </div>
-        ) : (
+        )}
+
+        {status === "done" && (
           <div className="text-base text-white leading-relaxed whitespace-pre-wrap font-sans antialiased tracking-wide">
-            <CleanTextFormatter text={aiText} />
+             <CleanTextFormatter text={aiText} />
           </div>
         )}
       </div>
