@@ -2462,59 +2462,59 @@ const fetchAiForExplanation = async (q, correctAnsText, fallbackExp) => {
 };
 
 const LiveAIExplanation = ({ q, correctAnsText, fallbackExp }) => {
-//   const [aiText, setAiText] = useState("");
-//   const [status, setStatus] = useState("idle"); 
+  const [aiText, setAiText] = useState("");
+  const [status, setStatus] = useState("idle"); 
 
-//   const handleFetchAi = async () => {
-//     setStatus("loading");
-//     // Button click hone par direct call hogi
-//     const text = await fetchAiForExplanation(q, correctAnsText, fallbackExp);
-//     setAiText(text);
-//     setStatus("done");
-//   };
+  const handleFetchAi = async () => {
+    setStatus("loading");
+    // Button click hone par direct call hogi
+    const text = await fetchAiForExplanation(q, correctAnsText, fallbackExp);
+    setAiText(text);
+    setStatus("done");
+  };
 
-//   return (
-//     <div className="bg-indigo-500/5 border border-indigo-500/20 p-5 rounded-xl mt-4">
-//       {/* Standard Explanation Wala Hissa */}
-//       <div className="mb-4">
-//         <p className="text-sm font-bold text-slate-400 mb-2">Standard Explanation:</p>
-//         <div className="text-base text-slate-200 leading-relaxed whitespace-pre-wrap antialiased">
-//           <CleanTextFormatter text={fallbackExp || "Detailed explanation not available."} />
-//         </div>
-//       </div>
+  return (
+    <div className="bg-indigo-500/5 border border-indigo-500/20 p-5 rounded-xl mt-4">
+      {/* Standard Explanation Wala Hissa */}
+      <div className="mb-4">
+        <p className="text-sm font-bold text-slate-400 mb-2">Standard Explanation:</p>
+        <div className="text-base text-slate-200 leading-relaxed whitespace-pre-wrap antialiased">
+          <CleanTextFormatter text={fallbackExp || "Detailed explanation not available."} />
+        </div>
+      </div>
       
-//       {/* Live AI Explanation Wala Hissa */}
-//       <div className="pt-4 border-t border-indigo-500/20">
-//         <p className="text-sm font-bold text-indigo-400 mb-3 flex items-center">
-//           <Zap className="w-4 h-4 mr-2 text-amber-400" /> Live AI Explanation (Internet Active)
-//         </p>
+      {/* Live AI Explanation Wala Hissa */}
+      <div className="pt-4 border-t border-indigo-500/20">
+        <p className="text-sm font-bold text-indigo-400 mb-3 flex items-center">
+          <Zap className="w-4 h-4 mr-2 text-amber-400" /> Live AI Explanation (Internet Active)
+        </p>
         
-//         {status === "idle" && (
-//           <button 
-//             onClick={handleFetchAi}
-//             className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 rounded-lg text-sm text-white font-medium transition-colors"
-//           >
-//             Generate AI Insight
-//           </button>
-//         )}
+        {status === "idle" && (
+          <button 
+            onClick={handleFetchAi}
+            className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 rounded-lg text-sm text-white font-medium transition-colors"
+          >
+            Generate AI Insight
+          </button>
+        )}
 
-//         {status === "loading" && (
-//           <div className="animate-pulse space-y-3">
-//              <div className="h-3 bg-indigo-500/20 rounded w-3/4"></div>
-//              <div className="h-3 bg-indigo-500/20 rounded w-full"></div>
-//              <div className="h-3 bg-indigo-500/20 rounded w-5/6"></div>
-//           </div>
-//         )}
+        {status === "loading" && (
+          <div className="animate-pulse space-y-3">
+             <div className="h-3 bg-indigo-500/20 rounded w-3/4"></div>
+             <div className="h-3 bg-indigo-500/20 rounded w-full"></div>
+             <div className="h-3 bg-indigo-500/20 rounded w-5/6"></div>
+          </div>
+        )}
 
-//         {status === "done" && (
-//           <div className="text-base text-white leading-relaxed whitespace-pre-wrap font-sans antialiased tracking-wide">
-//              <CleanTextFormatter text={aiText} />
-//           </div>
-//         )}
-//       </div>
-//     </div>
-//   );
-// }; 
+        {status === "done" && (
+          <div className="text-base text-white leading-relaxed whitespace-pre-wrap font-sans antialiased tracking-wide">
+             <CleanTextFormatter text={aiText} />
+          </div>
+        )}
+      </div>
+    </div>
+  );
+ }; 
 
 const TestResultScreen = ({ navigate, context, onRoadmapGenerate, userData }) => {
   const safeContext = context || { exam: '', sub: '', score: '0.00', totalAttempted: 0, maxScore: 100, testName: 'Test', subjectiveEvaluated: false, questions: [], answers: {}, correctCount: 0, incorrectCount: 0, unattemptedCount: 100, isDiagnostic: false };
@@ -3881,6 +3881,7 @@ export default function App() {
       }
     }
   }, []);
+  
 
   useEffect(() => {
     if (currentUser && userData.email) {
