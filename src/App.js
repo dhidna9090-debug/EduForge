@@ -2362,7 +2362,7 @@ const ActiveTestScreen = ({ navigate, context, onTestComplete }) => {
   const apiKey = "AIzaSyBsbaozbt3qknzDE2GdnUDOgfTB0jZwt9c"; 
   
   // Naya Stable Model
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${AIzaSyBsbaozbt3qknzDE2GdnUDOgfTB0jZwt9c}`;
   
   const isTheory = q.type === 'theory';
   const isHindi = /[\u0900-\u097F]/.test(q.text) || String(q.text).toLowerCase().includes('hindi');
