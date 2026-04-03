@@ -2404,6 +2404,25 @@ const ActiveTestScreen = ({ navigate, context, onTestComplete }) => {
   }
 };
 
+const LiveAIExplanation = ({ q, correctAnsText, fallbackExp }) => {// =================================================================
+// 1. GLOBAL QUEUE SYSTEM (Ishe waisa hi rehne dein)
+// =================================================================
+let fetchQueue = Promise.resolve();
+
+const safeFetchAi = (q, correctAnsText, fallbackExp) => {
+  return new Promise((resolve) => {
+    fetchQueue = fetchQueue.then(async () => {
+      // 4 seconds delay
+      await new Promise(res => setTimeout(res, 4000));
+      const result = await fetchAiForExplanation(q, correctAnsText, fallbackExp);
+      resolve(result); 
+    });
+  });
+};
+
+// =================================================================
+// 2. AAPKA ORIGINAL COMPONENT + NAYA LOGIC
+// =================================================================
 const LiveAIExplanation = ({ q, correctAnsText, fallbackExp }) => {
   const [aiText, setAiText] = useState("");
   const [loading, setLoading] = useState(true);
@@ -2416,10 +2435,12 @@ const LiveAIExplanation = ({ q, correctAnsText, fallbackExp }) => {
         if (entries[0].isIntersecting && !hasFetched.current) {
           hasFetched.current = true;
           setLoading(true);
-          fetchAiForExplanation(q, correctAnsText, fallbackExp).then(text => {
+          
+          safeFetchAi(q, correctAnsText, fallbackExp).then(text => {
             setAiText(text);
             setLoading(false);
           });
+          
           observer.disconnect();
         }
       }, { threshold: 0.1 });
@@ -2430,7 +2451,8 @@ const LiveAIExplanation = ({ q, correctAnsText, fallbackExp }) => {
       if (!hasFetched.current) {
         hasFetched.current = true;
         setLoading(true);
-        fetchAiForExplanation(q, correctAnsText, fallbackExp).then(text => {
+        
+        safeFetchAi(q, correctAnsText, fallbackExp).then(text => {
           setAiText(text);
           setLoading(false);
         });
@@ -2438,6 +2460,7 @@ const LiveAIExplanation = ({ q, correctAnsText, fallbackExp }) => {
     }
   }, [q, correctAnsText, fallbackExp]);
 
+  // AAPKA ORIGINAL UI YAHAN HAI 👇
   return (
     <div ref={observerRef} className="bg-indigo-500/5 border border-indigo-500/20 p-5 rounded-xl mt-4">
       <div className="mb-4">
