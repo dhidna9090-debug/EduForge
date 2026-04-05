@@ -3729,17 +3729,25 @@ export default function App() {
   }, []);
 
   // --- 2. DATA FETCHING (SAFE LOAD) ---
+  // --- 2. DATA FETCHING (SAFE LOAD) ---
   useEffect(() => {
     if (!firebaseUser) return;
     const docRef = doc(db, 'apps', appId, 'users', firebaseUser.uid);
 
     const unsubscribe = onSnapshot(docRef, (snap) => {
       if (snap.exists()) {
-        // ✅ PURANA USER: Data mil gaya, isko load karo
+        // ✅ PURANA USER: Data mil gaya, load karo
         const fetchedData = snap.data();
         setUserData(checkAndResetStreak(fetchedData));
-        setIsDbReady(true);
+      } else {
+        // 🆕 DATA NAHI HAI: Toh automatically naya data bana lo
+        setUserData({ ...defaultUserData, email: firebaseUser.email });
       }
+      
+      // 🚨 MERI GALTI YAHAN THI: Is line ko if-else ke bahar hona chahiye tha
+      // Taaki check hone ke baad Auto-save chalu ho sake!
+      setIsDbReady(true); 
+      
     }, (error) => console.error("Firestore Read Error:", error));
 
     return () => unsubscribe();
