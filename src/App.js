@@ -3705,83 +3705,64 @@ export default function App() {
   const [firebaseUser, setFirebaseUser] = useState(null);
   const [authError, setAuthError] = useState('');
   const [isDbReady, setIsDbReady] = useState(false);
-  const [userData, setUserData] = useState({
+
+  const defaultUserData = {
     name: '', email: '', targetExam: '', targetSub: '', testHistory: [], activeRoadmap: null, completedTasks: [], customTasks: [], xp: 0, streak: 0, dailyProgress: { date: '', xpGained: 0, targetXp: 120, isStreakCounted: false }, isPro: false, profilePhoto: null
-  });
-// --- YE TEENO HOOKS YAHAN PASTE KAREIN ---
+  };
+
+  const [userData, setUserData] = useState(defaultUserData);
+
+  // --- 1. FIREBASE AUTH LISTENER ---
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (u) => {
       setFirebaseUser(u);
-      if (u) setCurrentUser(u.email);
-      else setCurrentUser(null);
+      if (u) {
+        setCurrentUser(u.email);
+      } else {
+        // Logout par sab clean kar do
+        setCurrentUser(null);
+        setIsDbReady(false);
+        setUserData(defaultUserData);
+      }
     });
     return () => unsubscribe();
   }, []);
 
+  // --- 2. DATA FETCHING (SAFE LOAD) ---
   useEffect(() => {
     if (!firebaseUser) return;
     const docRef = doc(db, 'apps', appId, 'users', firebaseUser.uid);
+
     const unsubscribe = onSnapshot(docRef, (snap) => {
       if (snap.exists()) {
-        setUserData(snap.data());
-      } else {
-        setDoc(docRef, userData).catch(console.error);
+        // ✅ PURANA USER: Data mil gaya, isko load karo
+        const fetchedData = snap.data();
+        setUserData(checkAndResetStreak(fetchedData));
+        setIsDbReady(true);
       }
-      setIsDbReady(true);
     }, (error) => console.error("Firestore Read Error:", error));
+
     return () => unsubscribe();
   }, [firebaseUser]);
 
+  // --- 3. AUTO-SAVE (SAFE OVERWRITE PREVENTION) ---
   useEffect(() => {
-    if (isDbReady && firebaseUser && userData) {
-      // Jadoo: Ye line saare 'undefined' errors ko hamesha ke liye khatam kar degi
+    // 🚨 MAGIC FIX: Sirf tabhi save karega jab isDbReady true ho aur data mein email ho.
+    // Isse empty data kabhi Firebase par overwrite nahi hoga!
+    if (isDbReady && firebaseUser && userData && userData.email) {
       const cleanData = JSON.parse(JSON.stringify(userData));
       setDoc(doc(db, 'apps', appId, 'users', firebaseUser.uid), cleanData, {merge: true}).catch(console.error);
     }
   }, [userData, isDbReady, firebaseUser]);
-  const sanitizeRoadmap = (parsedData) => {
-    if (parsedData?.activeRoadmap?.roadmapData) {
-      parsedData.activeRoadmap.roadmapData.forEach(phase => {
-        (phase.tasks || []).forEach(task => {
-          if (task.icon) delete task.icon; 
-        });
-      });
-    }
-    return parsedData;
-  };
 
+  // --- HELPER FUNCTIONS ---
   const checkAndResetStreak = (user) => {
+    if (!user) return user;
     const today = new Date().toDateString();
     if (!user.dailyProgress) {
        user.dailyProgress = { date: today, xpGained: 0, targetXp: 120, isStreakCounted: false };
        return user;
     }
-    const handleLogin = async ({ email, password, name, isLogin }) => {
-    setAuthError('');
-    try {
-      if (isLogin) {
-        await signInWithEmailAndPassword(auth, email, password);
-      } else {
-        const userCred = await createUserWithEmailAndPassword(auth, email, password);
-        // Yahan bhi humne saaf-safai kar di
-        const initialProfile = JSON.parse(JSON.stringify({ ...userData, name, email }));
-        setUserData(initialProfile);
-        await setDoc(doc(db, 'apps', appId, 'users', userCred.user.uid), initialProfile);
-      }
-      setCurrentUser(email);
-      safeStorage.setItem('eduforge_current_user', email);
-      setCurrentView('dashboard');
-    } catch (e) {
-      alert("Firebase Error: " + e.message); 
-      setAuthError(e.message);
-    }
-  };
-
-  const handleLogout = async () => {
-    await signOut(auth);
-    setCurrentView('dashboard');
-    setUserData({ name: '', email: '', targetExam: 'GATE', targetSub: 'Computer Science (CS)', xp: 0, streak: 0, completedTasks: [], testHistory: [] });
-  };
     if (user.dailyProgress.date === today) return user;
 
     const yesterday = new Date();
@@ -3789,81 +3770,66 @@ export default function App() {
 
     let newStreak = user.streak || 0;
     if (user.dailyProgress.date !== yesterday.toDateString() || !user.dailyProgress.isStreakCounted) {
-       newStreak = 0; 
+       newStreak = 0;
     }
 
     return {
       ...user,
       streak: newStreak,
-      dailyProgress: {
-        date: today,
-        xpGained: 0,
-        targetXp: user.dailyProgress.targetXp || 120,
-        isStreakCounted: false
-      }
+      dailyProgress: { date: today, xpGained: 0, targetXp: user.dailyProgress.targetXp || 120, isStreakCounted: false }
     };
   };
 
-  useEffect(() => {
-    if (safeStorage.getItem('eduforge_v12') !== 'true') {
-      safeStorage.clear();
-      safeStorage.setItem('eduforge_v12', 'true');
+  const sanitizeRoadmap = (parsedData) => {
+    if (parsedData?.activeRoadmap?.roadmapData) {
+      parsedData.activeRoadmap.roadmapData.forEach(phase => {
+        (phase.tasks || []).forEach(task => {
+          if (task.icon) delete task.icon;
+        });
+      });
     }
+    return parsedData;
+  };
 
-    const loggedInUser = safeStorage.getItem('eduforge_current_user');
-    if (loggedInUser) {
-      setCurrentUser(loggedInUser);
-      const savedData = safeStorage.getItem(`eduforge_data_${loggedInUser}`);
-      if (savedData) {
-        try {
-          let parsed = JSON.parse(savedData);
-          parsed = checkAndResetStreak(parsed);
-          if (!parsed.customTasks) parsed.customTasks = [];
-          setUserData(sanitizeRoadmap(parsed));
-        } catch(e) {}
-      }
-    }
-  }, []);
-
-  useEffect(() => {
-    if (currentUser && userData.email) {
-      safeStorage.setItem(`eduforge_data_${currentUser}`, JSON.stringify(userData));
-    }
-  }, [userData, currentUser]);
-
+  // --- LOGIN / LOGOUT ---
   const handleLogin = async ({ email, password, name, isLogin }) => {
     setAuthError('');
     try {
       if (isLogin) {
+        // Login wale case mein kuch setDoc mat karo. Upar wala useEffect (Safe Load) khud data laayega!
         await signInWithEmailAndPassword(auth, email, password);
       } else {
+        // Sirf Naye account banne par setDoc chalao
         const userCred = await createUserWithEmailAndPassword(auth, email, password);
-        const initialProfile = { ...userData, name, email };
-        setUserData(initialProfile);
+        const initialProfile = { ...defaultUserData, name, email };
         await setDoc(doc(db, 'apps', appId, 'users', userCred.user.uid), initialProfile);
+        setUserData(initialProfile);
+        setIsDbReady(true);
       }
       setCurrentUser(email);
-      safeStorage.setItem('eduforge_current_user', email);
       setCurrentView('dashboard');
     } catch (e) {
-      alert("Firebase Error: " + e.message); 
+      alert("Firebase Error: " + e.message);
       setAuthError(e.message);
     }
   };
-  const handleLogout = () => {
+
+  const handleLogout = async () => {
+    await signOut(auth);
     setCurrentUser(null);
     setCurrentView('dashboard');
     setContextData(null);
-    safeStorage.removeItem('eduforge_current_user');
-    setUserData({ name: '', email: '', targetExam: '', targetSub: '', testHistory: [], activeRoadmap: null, completedTasks: [], customTasks: [], xp: 0, streak: 0, dailyProgress: { date: '', xpGained: 0, targetXp: 120, isStreakCounted: false }, isPro: false, profilePhoto: null });
+    setUserData(defaultUserData);
+    setIsDbReady(false);
   };
 
+  // --- PROGRESS & XP LOGIC ---
   const updateDailyXP = (gain) => {
     const today = new Date().toDateString();
     setUserData(prev => {
       let currentDaily = prev.dailyProgress || { date: today, xpGained: 0, targetXp: 120, isStreakCounted: false };
-      
       let newStreak = prev.streak || 0;
+
       if (currentDaily.date !== today) {
          const yesterday = new Date();
          yesterday.setDate(yesterday.getDate() - 1);
@@ -3896,12 +3862,10 @@ export default function App() {
   };
 
   const handleTestComplete = (resultData) => {
-    const xpGain = Math.max(0, Math.floor(Number(resultData.score) * 5)); 
-    
+    const xpGain = Math.max(0, Math.floor(Number(resultData.score) * 5));
     setUserData(prev => {
       const percentage = (Number(resultData.score) / Number(resultData.maxScore)) * 100;
       let newlyCompleted = [];
-      
       if (percentage >= 80 && prev.activeRoadmap && prev.activeRoadmap.roadmapData) {
         prev.activeRoadmap.roadmapData.forEach(phase => {
           if (resultData.testName.includes(phase.title)) {
@@ -3913,14 +3877,12 @@ export default function App() {
           }
         });
       }
-      
-      return { 
-        ...prev, 
+      return {
+        ...prev,
         testHistory: [resultData, ...prev.testHistory].slice(0, 5),
         completedTasks: [...prev.completedTasks, ...newlyCompleted]
       };
     });
-    
     updateDailyXP(xpGain);
   };
 
@@ -3935,9 +3897,12 @@ export default function App() {
       updateDailyXP(gain);
     }
   };
-if (!currentUser) return <AuthScreen onLogin={handleLogin} authError={authError} />;
+
+  if (!currentUser) return <AuthScreen onLogin={handleLogin} authError={authError} />;
+
+  // YAHAN SE AAPKA PURANA RETURN (...) WALA UI SHURU HOTA HAI
   return (
-    <div className="min-h-screen bg-slate-950 font-sans selection:bg-indigo-500/30 text-slate-200">
+  <div className="min-h-screen bg-slate-950 font-sans selection:bg-indigo-500/30 text-slate-200">
       {currentView !== 'active-test' && currentView !== 'fetching-test' && (
         <nav className="sticky top-0 z-50 bg-slate-950/80 backdrop-blur-lg border-b border-slate-800">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
