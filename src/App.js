@@ -3228,7 +3228,6 @@ const OnboardingScreen = ({ navigate, userData, setUserData }) => {
     </div>
   );
 };
-
 const DashboardScreen = ({ navigate, userData, onRoadmapGenerate }) => {
   const exams = [
     { id: 'gate', title: 'GATE', icon: <Compass className="w-6 h-6" />, color: 'from-orange-500 to-red-500', desc: 'Engineering (CS, ME, CE...)' },
@@ -3250,12 +3249,18 @@ const DashboardScreen = ({ navigate, userData, onRoadmapGenerate }) => {
   const dailyGoalPct = Math.min(100, Math.round((currentXp / targetXp) * 100));
   const lastTest = userData.testHistory?.[0] || null;
 
+  // 👉 NAYA FUNCTION: Roadmap Reset Karne Ke Liye
+  const handleResetRoadmap = () => {
+    if (window.confirm("Are you sure you want to change your plan? Your completed tasks history will remain safe, but a new schedule will be generated.")) {
+      onRoadmapGenerate(null); 
+    }
+  };
+
   return (
     <div className="space-y-8 pb-10">
       
-      {/* 1. HERO SECTION - Personalized Greeting */}
+      {/* 1. HERO SECTION */}
       <MotionDiv className="relative bg-slate-900 border border-slate-800 rounded-3xl p-8 md:p-10 overflow-hidden shadow-xl">
-        {/* Sleeker Background effects */}
         <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-indigo-500/10 rounded-full filter blur-[100px] transform translate-x-1/3 -translate-y-1/3 pointer-events-none"></div>
         <div className="absolute bottom-0 left-0 w-[300px] h-[300px] bg-purple-500/10 rounded-full filter blur-[80px] transform -translate-x-1/3 translate-y-1/3 pointer-events-none"></div>
         
@@ -3321,10 +3326,10 @@ const DashboardScreen = ({ navigate, userData, onRoadmapGenerate }) => {
       {/* 3. MAIN DASHBOARD CONTENT GRID */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mt-8">
         
-        {/* Left Column: Graphs & Roadmaps (Takes up 2/3) */}
+        {/* Left Column: Graphs & Roadmaps */}
         <div className="lg:col-span-2 space-y-8">
           
-          {/* Test Analysis Graph Section directly on Dashboard */}
+          {/* Test Analysis Graph */}
           <MotionDiv delay={200} className="bg-slate-900 border border-slate-800 rounded-3xl p-6 md:p-8 shadow-xl">
             <div className="flex justify-between items-center mb-6 border-b border-slate-800 pb-4">
               <h3 className="text-xl font-bold text-white flex items-center">
@@ -3348,7 +3353,7 @@ const DashboardScreen = ({ navigate, userData, onRoadmapGenerate }) => {
             )}
           </MotionDiv>
 
-          {/* Current Roadmap Action */}
+          {/* Current Goal Display */}
           <MotionDiv delay={300}>
             <div className="bg-gradient-to-r from-indigo-900/40 to-slate-900 border border-indigo-500/30 rounded-3xl p-6 md:p-8 shadow-xl flex flex-col md:flex-row items-center justify-between relative overflow-hidden mb-8">
               <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/20 rounded-full blur-3xl"></div>
@@ -3390,10 +3395,20 @@ const DashboardScreen = ({ navigate, userData, onRoadmapGenerate }) => {
               </div>
             </div>
 
+            {/* 👉 YAHAN HUMNE 'CHANGE PLAN' KA BUTTON LAGA DIYA HAI */}
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-xl font-bold text-white flex items-center">
                 <Map className="w-5 h-5 mr-2 text-indigo-400" /> Active AI Roadmap
               </h3>
+              
+              {userData.activeRoadmap && (
+                <button 
+                  onClick={handleResetRoadmap}
+                  className="text-xs font-bold px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg border border-slate-700 transition-colors flex items-center"
+                >
+                  <Edit3 className="w-3 h-3 mr-1" /> Change Plan
+                </button>
+              )}
             </div>
 
             {userData.activeRoadmap ? (
@@ -3429,10 +3444,8 @@ const DashboardScreen = ({ navigate, userData, onRoadmapGenerate }) => {
           </MotionDiv>
         </div>
 
-        {/* Right Column: Activity & Summaries (Takes up 1/3) */}
+        {/* Right Column: Daily Progress */}
         <div className="space-y-8">
-          
-          {/* Daily Progress / Streak */}
           <MotionDiv delay={400} className="bg-slate-900 border border-slate-800 p-6 rounded-3xl relative overflow-hidden shadow-xl">
             <div className="absolute top-0 right-0 w-24 h-24 bg-amber-500/5 rounded-full blur-2xl"></div>
             <h3 className="text-lg font-bold text-white mb-4 flex items-center relative z-10">
@@ -3446,16 +3459,14 @@ const DashboardScreen = ({ navigate, userData, onRoadmapGenerate }) => {
               <div className="bg-gradient-to-r from-indigo-500 to-purple-500 h-full rounded-full transition-all duration-1000" style={{ width: `${dailyGoalPct}%` }}></div>
             </div>
             <p className="text-xs text-slate-400 text-center relative z-10 bg-slate-950/50 p-2 rounded-lg">
-              {dailyGoalPct >= 75 ? <span className="text-emerald-400 font-bold">Awesome! Streak secured for today.</span> : `Earn ${Math.floor(targetXp * 0.75) - currentXp} more XP to keep your streak alive!`}
+              {dailyGoalPct >= 75 ? <span className="text-emerald-400 font-bold">Awesome! Streak secured for today.</span> : `Earn ${Math.floor(targetXp * 0.75) - currentXp > 0 ? Math.floor(targetXp * 0.75) - currentXp : 0} more XP to keep your streak alive!`}
             </p>
           </MotionDiv>
-
         </div>
       </div>
     </div>
   );
 };
-
 const ProfileScreen = ({ navigate, userData, setUserData }) => {
   return (
     <div className="max-w-4xl mx-auto pb-20">
