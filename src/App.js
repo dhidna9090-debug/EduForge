@@ -7,7 +7,7 @@ import {
   List, FileText, Layers, AlertTriangle, ClipboardList, CheckSquare, 
   Timer, Edit3, Wifi, Server, Database, DownloadCloud, User, History, 
   BarChart2, Check, MinusCircle, CreditCard, Smartphone, QrCode, ShieldCheck, 
-  Crown, Unlock, Camera, Lightbulb, Flame, TrendingUp, ChevronLeft, Plus, Trash2, Coffee, Users
+  Crown, Unlock, Camera, Lightbulb, Flame, TrendingUp, ChevronLeft, Plus, Trash2, Coffee, Users, MessageCircle, Star
 } from 'lucide-react';
 import { LineChart, Line, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, Legend, ResponsiveContainer } from 'recharts';
 import { initializeApp } from 'firebase/app';
@@ -3708,7 +3708,110 @@ const AnalyticsScreen = ({ navigate, userData }) => {
     </div>
   );
 };
+const FeedbackWidget = ({ userData }) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const [feedbackText, setFeedbackText] = useState('');
+  const [rating, setRating] = useState(5);
+  const [status, setStatus] = useState('idle'); // idle, submitting, success
 
+  const handleSubmit = async () => {
+    if (!feedbackText.trim()) return;
+    setStatus('submitting');
+    try {
+      // Firebase mein naya folder 'feedback' automatically ban jayega
+      const feedbackId = `feedback_${Date.now()}`;
+      await setDoc(doc(db, 'apps', appId, 'feedback', feedbackId), {
+        name: userData?.name || 'Anonymous Student',
+        email: userData?.email || 'No Email',
+        message: feedbackText,
+        rating: rating,
+        date: new Date().toLocaleDateString(),
+        createdAt: new Date()
+      });
+      
+      setStatus('success');
+      setTimeout(() => {
+        setIsOpen(false);
+        setStatus('idle');
+        setFeedbackText('');
+        setRating(5);
+      }, 3000);
+    } catch (e) {
+      console.error(e);
+      setStatus('idle');
+      alert("Failed to send feedback. Please check your internet connection.");
+    }
+  };
+
+  return (
+    <div className="fixed bottom-6 left-6 z-50">
+      {isOpen ? (
+        <MotionDiv animation="fade-in" className="bg-slate-900 border border-slate-700 w-80 md:w-96 rounded-2xl shadow-2xl flex flex-col overflow-hidden">
+          <div className="bg-gradient-to-r from-emerald-600 to-teal-600 p-4 flex justify-between items-center shadow-md">
+            <div className="flex items-center space-x-2">
+              <MessageCircle className="w-5 h-5 text-white" />
+              <span className="font-bold text-white">Send Feedback</span>
+            </div>
+            <button onClick={() => setIsOpen(false)} className="text-white hover:bg-white/20 p-1 rounded-full transition-colors">
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+          
+          <div className="p-5 bg-slate-950">
+            {status === 'success' ? (
+              <div className="flex flex-col items-center justify-center py-8 text-center">
+                <div className="w-16 h-16 bg-emerald-500/20 text-emerald-400 rounded-full flex items-center justify-center mb-4">
+                  <CheckCircle className="w-8 h-8" />
+                </div>
+                <h3 className="text-xl font-bold text-white mb-2">Thank You!</h3>
+                <p className="text-slate-400 text-sm">Your feedback helps us improve EduForge.</p>
+              </div>
+            ) : (
+              <>
+                <p className="text-slate-300 text-sm mb-4">How would you rate your experience with EduForge?</p>
+                <div className="flex justify-center space-x-2 mb-6">
+                  {[1, 2, 3, 4, 5].map((star) => (
+                    <button key={star} onClick={() => setRating(star)} className="focus:outline-none transition-transform hover:scale-110">
+                      <Star className={`w-8 h-8 ${rating >= star ? 'fill-amber-400 text-amber-400' : 'text-slate-600'}`} />
+                    </button>
+                  ))}
+                </div>
+                
+                <label className="block text-sm font-medium text-slate-400 mb-2">Tell us what you think or report a bug:</label>
+                <textarea 
+                  value={feedbackText}
+                  onChange={(e) => setFeedbackText(e.target.value)}
+                  placeholder="I love the AI Roadmap feature, but I wish there was..."
+                  className="w-full bg-slate-900 border border-slate-700 rounded-xl p-3 text-white focus:outline-none focus:border-emerald-500 text-sm resize-none h-28 mb-4 transition-colors"
+                />
+                
+                <button 
+                  onClick={handleSubmit} 
+                  disabled={!feedbackText.trim() || status === 'submitting'}
+                  className="w-full py-3 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold rounded-xl transition-all flex justify-center items-center disabled:opacity-50"
+                >
+                  {status === 'submitting' ? (
+                    <><div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div> Sending...</>
+                  ) : (
+                    <><Send className="w-4 h-4 mr-2" /> Submit Feedback</>
+                  )}
+                </button>
+              </>
+            )}
+          </div>
+        </MotionDiv>
+      ) : (
+        <button 
+          onClick={() => setIsOpen(true)}
+          className="bg-slate-800 border border-slate-700 hover:bg-slate-700 text-slate-300 px-4 py-3 rounded-full shadow-lg flex items-center transition-all transform hover:scale-105 active:scale-95"
+        >
+          <MessageCircle className="w-5 h-5 mr-2 text-emerald-400" />
+          <span className="font-bold text-sm">Feedback</span>
+        </button>
+      )}
+    </div>
+  );
+};
 export default function App() {
   const [currentView, setCurrentView] = useState('dashboard');
   const [contextData, setContextData] = useState(null);
@@ -3971,7 +4074,12 @@ export default function App() {
         {currentView === 'profile' && <ProfileScreen navigate={navigate} userData={userData} setUserData={setUserData} />}
       </main>
 
-      {currentView !== 'active-test' && currentView !== 'fetching-test' && <AIChatWidget />}
+      {currentView !== 'active-test' && currentView !== 'fetching-test' && (
+        <>
+          <FeedbackWidget userData={userData} />
+          <AIChatWidget />
+        </>
+      )}
     </div>
   );
 }
