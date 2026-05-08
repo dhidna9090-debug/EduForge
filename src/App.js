@@ -5,7 +5,7 @@ import {
   CheckCircle, Clock, ArrowRight, Zap, ArrowLeft, PlayCircle, BookMarked,
   MessageSquare, Send, X, Activity, Globe, Map, ExternalLink, Calendar,
   List, FileText, Layers, AlertTriangle, ClipboardList, CheckSquare, 
-  Timer, Edit3, Wifi, Server, Database, DownloadCloud, User, History, 
+  Timer, Edit3, Wifi, Server, Database, DownloadCloud, User, History, html2canvas,
   BarChart2, Check, MinusCircle, CreditCard, Smartphone, QrCode, ShieldCheck, 
   Crown, Unlock, Camera, Lightbulb, Flame, TrendingUp, ChevronLeft, Plus, Trash2, Coffee, Users, MessageCircle, Star
 } from 'lucide-react';
@@ -13,7 +13,7 @@ import { LineChart, Line, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, Cart
 import { initializeApp } from 'firebase/app';
 import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, signOut } from 'firebase/auth';
 import { getFirestore, doc, setDoc, onSnapshot } from 'firebase/firestore';
-
+import html2canvas from 'html2canvas';
 const firebaseConfig = {
   apiKey: "AIzaSyC3RaNBvctI75u5QOHSBrF_AnhPrft391s",
   authDomain: "eduforge-29535.firebaseapp.com",
@@ -3253,6 +3253,40 @@ const DashboardScreen = ({ navigate, userData, onRoadmapGenerate }) => {
       onRoadmapGenerate(null); 
     }
   };
+  const handleDownloadCard = async () => {
+    const cardElement = document.getElementById('shareable-target-card');
+    if (!cardElement) return;
+    
+    try {
+      // 1. Image Generate Karein
+      const canvas = await html2canvas(cardElement, { 
+        backgroundColor: '#0f172a',
+        scale: 2 
+      });
+      
+      // 2. Firebase mein Download Data Store Karein
+      const downloadId = `dl_${Date.now()}`;
+      await setDoc(doc(db, 'apps', appId, 'activity_logs', downloadId), {
+        userName: userData?.name || 'User',
+        targetExam: userData?.targetExam || 'N/A',
+        action: 'Downloaded Target Card',
+        timestamp: new Date()
+      });
+
+      // 3. Image Download Karwayein
+      const dataUrl = canvas.toDataURL('image/png');
+      const link = document.createElement('a');
+      link.href = dataUrl;
+      link.download = `EduForge_${userData.targetExam || 'Goal'}.png`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+
+      console.log("Activity logged in Firebase!");
+    } catch (error) {
+      console.error("Error:", error);
+    }
+  };
 
   return (
     <div className="space-y-6 md:space-y-8 pb-10 w-full max-w-7xl mx-auto">
@@ -3411,6 +3445,12 @@ const DashboardScreen = ({ navigate, userData, onRoadmapGenerate }) => {
                   <Zap className="w-3.5 h-3.5 md:w-4 md:h-4 mr-1.5 md:mr-2 shrink-0" /> Generate Complete Roadmap
                 </button>
               )}
+              <button 
+    onClick={handleDownloadCard} 
+    className="w-full sm:w-auto px-4 py-2.5 md:px-6 md:py-3 bg-slate-800 hover:bg-indigo-600/40 border border-indigo-500/30 rounded-xl text-xs md:text-sm font-bold text-indigo-300 hover:text-white transition-all flex items-center justify-center whitespace-nowrap shadow-lg"
+  >
+    <DownloadCloud className="w-3.5 h-3.5 md:w-4 md:h-4 mr-1.5 md:mr-2 shrink-0" /> Share Goal
+  </button>
             </div>
           </div>
 
@@ -3463,7 +3503,38 @@ const DashboardScreen = ({ navigate, userData, onRoadmapGenerate }) => {
           )}
         </MotionDiv>
       </div>
+    {/* HIDDEN SHAREABLE CARD */}
+      <div className="absolute left-[-9999px] top-0">
+        <div id="shareable-target-card" className="w-[500px] h-[300px] bg-gradient-to-br from-slate-900 to-indigo-950 border-2 border-indigo-500/50 rounded-3xl p-8 flex flex-col justify-between relative overflow-hidden">
+          <div className="absolute top-[-50px] right-[-50px] w-40 h-40 bg-indigo-500/30 rounded-full blur-2xl"></div>
+          
+          <div className="flex justify-between items-start relative z-10">
+            <div>
+              <h1 className="text-3xl font-black text-white tracking-wider mb-1">EduForge</h1>
+              <p className="text-indigo-400 text-sm font-bold tracking-widest uppercase">Target Locked</p>
+            </div>
+            <div className="w-16 h-16 bg-slate-800 rounded-2xl flex items-center justify-center border border-slate-700 shadow-lg">
+              <Target className="w-8 h-8 text-amber-400" />
+            </div>
+          </div>
 
+          <div className="relative z-10 mt-6">
+            <h2 className="text-slate-400 text-sm font-medium mb-1">Aspirant</h2>
+            <h3 className="text-2xl font-bold text-white mb-4">{String(userData.name) || 'Student'}</h3>
+            
+            <div className="flex gap-4">
+              <div className="bg-indigo-600/20 border border-indigo-500/30 px-4 py-2 rounded-xl flex-1">
+                <p className="text-indigo-300 text-[10px] uppercase font-bold mb-1">Primary Goal</p>
+                <p className="text-white font-bold text-lg">{userData.targetExam || 'N/A'}</p>
+              </div>
+              <div className="bg-amber-500/10 border border-amber-500/30 px-4 py-2 rounded-xl flex-1">
+                <p className="text-amber-400 text-[10px] uppercase font-bold mb-1">Current Streak</p>
+                <p className="text-white font-bold text-lg">{userData.streak || 0} Days 🔥</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   );
 };
