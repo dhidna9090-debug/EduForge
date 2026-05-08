@@ -3230,11 +3230,11 @@ const OnboardingScreen = ({ navigate, userData, setUserData }) => {
 };
 const DashboardScreen = ({ navigate, userData, onRoadmapGenerate }) => {
   const exams = [
-    { id: 'gate', title: 'GATE', icon: <Compass className="w-6 h-6" />, color: 'from-orange-500 to-red-500', desc: 'Engineering (CS, ME, CE...)' },
-    { id: 'upsc', title: 'UPSC CSE', icon: <Target className="w-6 h-6" />, color: 'from-emerald-500 to-teal-600', desc: 'Civil Services (Pre/Mains)' },
-    { id: 'bpsc', title: 'BPSC', icon: <Map className="w-6 h-6" />, color: 'from-blue-500 to-indigo-600', desc: 'Bihar Public Service' },
-    { id: 'beu', title: 'BEU (Bihar Engg Univ)', icon: <BookOpen className="w-6 h-6" />, color: 'from-purple-500 to-pink-600', desc: 'B.Tech 1st and 2nd Sem' },
-    { id: 'aktu', title: 'AKTU (UP)', icon: <Layers className="w-6 h-6" />, color: 'from-indigo-500 to-blue-600', desc: 'B.Tech Semester Exams' }
+    { id: 'gate', title: 'GATE', icon: <Compass className="w-5 h-5 md:w-6 md:h-6" />, color: 'from-orange-500 to-red-500', desc: 'Engineering (CS, ME, CE...)' },
+    { id: 'upsc', title: 'UPSC CSE', icon: <Target className="w-5 h-5 md:w-6 md:h-6" />, color: 'from-emerald-500 to-teal-600', desc: 'Civil Services (Pre/Mains)' },
+    { id: 'bpsc', title: 'BPSC', icon: <Map className="w-5 h-5 md:w-6 md:h-6" />, color: 'from-blue-500 to-indigo-600', desc: 'Bihar Public Service' },
+    { id: 'beu', title: 'BEU (Bihar Engg Univ)', icon: <BookOpen className="w-5 h-5 md:w-6 md:h-6" />, color: 'from-purple-500 to-pink-600', desc: 'B.Tech 1st and 2nd Sem' },
+    { id: 'aktu', title: 'AKTU (UP)', icon: <Layers className="w-5 h-5 md:w-6 md:h-6" />, color: 'from-indigo-500 to-blue-600', desc: 'B.Tech Semester Exams' }
   ];
 
   let totalTasks = 0;
@@ -3247,9 +3247,7 @@ const DashboardScreen = ({ navigate, userData, onRoadmapGenerate }) => {
   const targetXp = dailyProgress.targetXp || 120;
   const currentXp = dailyProgress.xpGained || 0;
   const dailyGoalPct = Math.min(100, Math.round((currentXp / targetXp) * 100));
-  const lastTest = userData.testHistory?.[0] || null;
 
-  // 👉 NAYA FUNCTION: Roadmap Reset Karne Ke Liye
   const handleResetRoadmap = () => {
     if (window.confirm("Are you sure you want to change your plan? Your completed tasks history will remain safe, but a new schedule will be generated.")) {
       onRoadmapGenerate(null); 
@@ -3257,25 +3255,25 @@ const DashboardScreen = ({ navigate, userData, onRoadmapGenerate }) => {
   };
 
   return (
-    <div className="space-y-8 pb-10">
+    <div className="space-y-6 md:space-y-8 pb-10 w-full max-w-7xl mx-auto">
       
       {/* 1. HERO SECTION */}
-      <MotionDiv className="relative bg-slate-900 border border-slate-800 rounded-3xl p-8 md:p-10 overflow-hidden shadow-xl">
-        <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-indigo-500/10 rounded-full filter blur-[100px] transform translate-x-1/3 -translate-y-1/3 pointer-events-none"></div>
-        <div className="absolute bottom-0 left-0 w-[300px] h-[300px] bg-purple-500/10 rounded-full filter blur-[80px] transform -translate-x-1/3 translate-y-1/3 pointer-events-none"></div>
+      <MotionDiv className="relative bg-slate-900 border border-slate-800 rounded-2xl md:rounded-3xl p-6 md:p-10 overflow-hidden shadow-xl w-full">
+        <div className="absolute top-0 right-0 w-[300px] md:w-[500px] h-[300px] md:h-[500px] bg-indigo-500/10 rounded-full filter blur-[80px] md:blur-[100px] transform translate-x-1/3 -translate-y-1/3 pointer-events-none"></div>
+        <div className="absolute bottom-0 left-0 w-[200px] md:w-[300px] h-[200px] md:h-[300px] bg-purple-500/10 rounded-full filter blur-[60px] md:blur-[80px] transform -translate-x-1/3 translate-y-1/3 pointer-events-none"></div>
         
-        <div className="relative z-10 flex flex-col xl:flex-row items-center justify-between gap-10">
-          <div className="flex-1 text-center xl:text-left">
-            <div className="inline-flex items-center px-3 py-1.5 bg-slate-800 border border-slate-700 rounded-full text-indigo-300 text-xs font-bold mb-6 shadow-sm">
+        <div className="relative z-10 flex flex-col xl:flex-row items-center justify-between gap-8 md:gap-10">
+          <div className="flex-1 text-center xl:text-left w-full">
+            <div className="inline-flex items-center px-3 py-1.5 bg-slate-800 border border-slate-700 rounded-full text-indigo-300 text-xs font-bold mb-4 md:mb-6 shadow-sm">
               <Zap className="w-3.5 h-3.5 mr-1.5 text-amber-400" /> Level {calculateUserLevel(userData)} Scholar
             </div>
-            <h1 className="text-4xl md:text-5xl font-extrabold text-white mb-4 tracking-tight leading-tight">
+            <h1 className="text-3xl md:text-4xl lg:text-5xl font-extrabold text-white mb-3 md:mb-4 tracking-tight leading-tight">
               Welcome Back, <br className="hidden md:block" />
               <span className="text-indigo-400">{String(userData.name) || 'Student'}</span>!
             </h1>
-            <p className="text-base md:text-lg text-slate-400 max-w-xl leading-relaxed mx-auto xl:mx-0">
+            <p className="text-sm md:text-base lg:text-lg text-slate-400 max-w-xl leading-relaxed mx-auto xl:mx-0">
               {userData.targetExam ? (
-                <>Your primary goal is <strong className="text-slate-200">{userData.targetExam} ({userData.targetSub})</strong>. You're currently on a <strong className="text-amber-400">{userData.streak} day streak</strong>. Let's make today count!</>
+                <>Your primary goal is <strong className="text-slate-200">{userData.targetExam} ({userData.targetSub})</strong>. You are currently on a <strong className="text-amber-400">{userData.streak} day streak</strong>. Let's make today count!</>
               ) : (
                 <>You haven't set a target exam yet! Head over to the <strong className="text-slate-200">Goal Settings</strong> to generate your personalized roadmap and mock tests.</>
               )}
@@ -3288,182 +3286,184 @@ const DashboardScreen = ({ navigate, userData, onRoadmapGenerate }) => {
       </MotionDiv>
 
       {/* 2. QUICK ACCESS BUTTONS */}
-      <MotionDiv delay={100} className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <button onClick={() => navigate('test-hub')} className="bg-slate-900 border border-slate-800 hover:border-emerald-500/50 rounded-2xl p-4 md:p-6 flex flex-col items-center justify-center text-center transition-all hover:bg-slate-800 group shadow-lg">
-          <div className="w-12 h-12 rounded-full bg-emerald-500/10 text-emerald-400 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
-            <CheckSquare className="w-6 h-6" />
+      <MotionDiv delay={100} className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 w-full">
+        <button onClick={() => navigate('test-hub')} className="bg-slate-900 border border-slate-800 hover:border-emerald-500/50 rounded-xl md:rounded-2xl p-4 md:p-6 flex flex-col items-center justify-center text-center transition-all hover:bg-slate-800 group shadow-lg w-full">
+          <div className="w-10 h-10 md:w-12 md:h-12 rounded-full bg-emerald-500/10 text-emerald-400 flex items-center justify-center mb-2 md:mb-3 group-hover:scale-110 transition-transform shrink-0">
+            <CheckSquare className="w-5 h-5 md:w-6 md:h-6 shrink-0" />
           </div>
-          <span className="font-bold text-white mb-1">Start Test</span>
-          <span className="text-xs text-slate-400">Mock & Topic</span>
+          <span className="font-bold text-white mb-1 text-sm md:text-base">Start Test</span>
+          <span className="text-[10px] md:text-xs text-slate-400">Mock & Topic</span>
         </button>
 
-        <button onClick={() => navigate('analytics')} className="bg-slate-900 border border-slate-800 hover:border-blue-500/50 rounded-2xl p-4 md:p-6 flex flex-col items-center justify-center text-center transition-all hover:bg-slate-800 group shadow-lg">
-          <div className="w-12 h-12 rounded-full bg-blue-500/10 text-blue-400 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
-            <BarChart2 className="w-6 h-6" />
+        <button onClick={() => navigate('analytics')} className="bg-slate-900 border border-slate-800 hover:border-blue-500/50 rounded-xl md:rounded-2xl p-4 md:p-6 flex flex-col items-center justify-center text-center transition-all hover:bg-slate-800 group shadow-lg w-full">
+          <div className="w-10 h-10 md:w-12 md:h-12 rounded-full bg-blue-500/10 text-blue-400 flex items-center justify-center mb-2 md:mb-3 group-hover:scale-110 transition-transform shrink-0">
+            <BarChart2 className="w-5 h-5 md:w-6 md:h-6 shrink-0" />
           </div>
-          <span className="font-bold text-white mb-1">View Progress</span>
-          <span className="text-xs text-slate-400">Detailed Analytics</span>
+          <span className="font-bold text-white mb-1 text-sm md:text-base">View Progress</span>
+          <span className="text-[10px] md:text-xs text-slate-400">Detailed Analytics</span>
         </button>
 
-        <button onClick={() => navigate('custom-roadmap')} className="bg-slate-900 border border-slate-800 hover:border-amber-500/50 rounded-2xl p-4 md:p-6 flex flex-col items-center justify-center text-center transition-all hover:bg-slate-800 group shadow-lg">
-          <div className="w-12 h-12 rounded-full bg-amber-500/10 text-amber-400 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
-            <Calendar className="w-6 h-6" />
+        <button onClick={() => navigate('custom-roadmap')} className="bg-slate-900 border border-slate-800 hover:border-amber-500/50 rounded-xl md:rounded-2xl p-4 md:p-6 flex flex-col items-center justify-center text-center transition-all hover:bg-slate-800 group shadow-lg w-full">
+          <div className="w-10 h-10 md:w-12 md:h-12 rounded-full bg-amber-500/10 text-amber-400 flex items-center justify-center mb-2 md:mb-3 group-hover:scale-110 transition-transform shrink-0">
+            <Calendar className="w-5 h-5 md:w-6 md:h-6 shrink-0" />
           </div>
-          <span className="font-bold text-white mb-1">Daily Planner</span>
-          <span className="text-xs text-slate-400">Custom Schedule</span>
+          <span className="font-bold text-white mb-1 text-sm md:text-base">Daily Planner</span>
+          <span className="text-[10px] md:text-xs text-slate-400">Custom Schedule</span>
         </button>
 
-        <button className="bg-slate-900 border border-slate-800 rounded-2xl p-4 md:p-6 flex flex-col items-center justify-center text-center transition-all opacity-70 cursor-not-allowed shadow-lg relative overflow-hidden">
-          <div className="absolute top-3 right-3 text-[10px] font-bold px-2 py-0.5 bg-slate-800 text-slate-400 rounded-full">Soon</div>
-          <div className="w-12 h-12 rounded-full bg-purple-500/10 text-purple-400 flex items-center justify-center mb-3">
-            <Users className="w-6 h-6" />
+        <button className="bg-slate-900 border border-slate-800 rounded-xl md:rounded-2xl p-4 md:p-6 flex flex-col items-center justify-center text-center transition-all opacity-70 cursor-not-allowed shadow-lg relative overflow-hidden w-full">
+          <div className="absolute top-2 right-2 md:top-3 md:right-3 text-[9px] md:text-[10px] font-bold px-2 py-0.5 bg-slate-800 text-slate-400 rounded-full">Soon</div>
+          <div className="w-10 h-10 md:w-12 md:h-12 rounded-full bg-purple-500/10 text-purple-400 flex items-center justify-center mb-2 md:mb-3 shrink-0">
+            <Users className="w-5 h-5 md:w-6 md:h-6 shrink-0" />
           </div>
-          <span className="font-bold text-white mb-1">Study Room</span>
-          <span className="text-xs text-slate-400">Co-learning</span>
+          <span className="font-bold text-white mb-1 text-sm md:text-base">Study Room</span>
+          <span className="text-[10px] md:text-xs text-slate-400">Co-learning</span>
         </button>
       </MotionDiv>
 
-      {/* 3. MAIN DASHBOARD CONTENT GRID */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mt-8">
+      {/* 3. TOP ROW: GRAPHS & DAILY PROGRESS */}
+      {/* 🚨 PROPER GRID STRUCTURE ENFORCED HERE */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 md:gap-8 mt-6 md:mt-8 w-full">
         
-        {/* Left Column: Graphs & Roadmaps */}
-        <div className="lg:col-span-2 space-y-8">
-          
-          {/* Test Analysis Graph */}
-          <MotionDiv delay={200} className="bg-slate-900 border border-slate-800 rounded-3xl p-6 md:p-8 shadow-xl">
-            <div className="flex justify-between items-center mb-6 border-b border-slate-800 pb-4">
-              <h3 className="text-xl font-bold text-white flex items-center">
-                <TrendingUp className="w-5 h-5 mr-2 text-emerald-400" /> Recent Performance Trend
+        {/* Left Column: Test Analysis Graph */}
+        <div className="lg:col-span-2 w-full">
+          <MotionDiv delay={200} className="bg-slate-900 border border-slate-800 rounded-2xl md:rounded-3xl p-5 md:p-8 shadow-xl h-full w-full">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 sm:gap-0 mb-6 border-b border-slate-800 pb-4">
+              <h3 className="text-lg md:text-xl font-bold text-white flex items-center">
+                <TrendingUp className="w-5 h-5 mr-2 text-emerald-400 shrink-0" /> Recent Performance Trend
               </h3>
-              <button onClick={() => navigate('analytics')} className="text-sm font-bold text-indigo-400 hover:text-indigo-300 flex items-center transition-colors">
+              <button onClick={() => navigate('analytics')} className="text-xs md:text-sm font-bold text-indigo-400 hover:text-indigo-300 flex items-center transition-colors">
                 Full Analysis <ChevronRight className="w-4 h-4 ml-1" />
               </button>
             </div>
             
             {userData?.testHistory && userData.testHistory.length > 1 ? (
-              <div className="h-64 mt-4">
+              <div className="h-48 md:h-64 mt-4 w-full">
                 <PerformanceTrendChart testHistory={userData.testHistory} />
               </div>
             ) : (
-              <div className="h-64 flex flex-col items-center justify-center border-2 border-dashed border-slate-800 rounded-2xl bg-slate-900/50 mt-4">
-                 <TrendingUp className="w-10 h-10 text-slate-600 mb-3" />
-                 <p className="text-slate-400 font-medium">Take at least 2 mock tests to unlock your trend graph.</p>
-                 <button onClick={() => navigate('test-hub')} className="mt-4 px-5 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-bold rounded-lg transition-colors shadow-md shadow-indigo-500/20">Go to Test Hub</button>
+              <div className="h-48 md:h-64 flex flex-col items-center justify-center border-2 border-dashed border-slate-800 rounded-xl md:rounded-2xl bg-slate-900/50 mt-4 p-4 text-center w-full">
+                 <TrendingUp className="w-8 h-8 md:w-10 md:h-10 text-slate-600 mb-3" />
+                 <p className="text-xs md:text-sm text-slate-400 font-medium max-w-sm">Take at least 2 mock tests to unlock your trend graph.</p>
+                 <button onClick={() => navigate('test-hub')} className="mt-4 px-4 py-2 md:px-5 md:py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs md:text-sm font-bold rounded-lg transition-colors shadow-md shadow-indigo-500/20">Go to Test Hub</button>
               </div>
-            )}
-          </MotionDiv>
-
-          {/* Current Goal Display */}
-          <MotionDiv delay={300}>
-            <div className="bg-gradient-to-r from-indigo-900/40 to-slate-900 border border-indigo-500/30 rounded-3xl p-6 md:p-8 shadow-xl flex flex-col md:flex-row items-center justify-between relative overflow-hidden mb-8">
-              <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/20 rounded-full blur-3xl"></div>
-              
-              <div className="flex items-center mb-6 md:mb-0 relative z-10 w-full md:w-auto">
-                <div className="w-16 h-16 md:w-20 md:h-20 rounded-2xl bg-indigo-500/20 text-indigo-400 flex items-center justify-center mr-6 shrink-0 shadow-lg shadow-indigo-500/20">
-                  <Target className="w-8 h-8 md:w-10 md:h-10" />
-                </div>
-                <div>
-                  <h2 className="text-xs md:text-sm font-bold text-indigo-400 uppercase tracking-wider mb-1">
-                    {userData.targetExam ? 'Primary Goal Assigned' : 'No Goal Selected'}
-                  </h2>
-                  <h3 className="text-2xl md:text-3xl font-black text-white">
-                    {userData.targetExam || 'Setup Required'} 
-                    <span className="text-slate-400 font-medium text-xl">
-                      {userData.targetSub ? ` | ${userData.targetSub}` : ''}
-                    </span>
-                  </h3>
-                  <p className="text-slate-400 text-sm mt-1 hidden md:block">
-                    {userData.targetExam ? 'Your entire dashboard and AI suggestions are optimized for this specific exam.' : 'Please set a goal to unlock your personalized AI roadmap.'}
-                  </p>
-                  {userData.activeRoadmap?.planMode === 'vvi_30_days' && (
-                    <span className="inline-flex items-center mt-2 px-3 py-1 bg-red-500/10 text-red-400 border border-red-500/20 rounded-full text-xs font-bold">
-                      <Flame className="w-3 h-3 mr-1" /> 30-Day VVI Challenge Active
-                    </span>
-                  )}
-                </div>
-              </div>
-              
-              <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto relative z-10">
-                <button onClick={() => navigate('onboarding')} className={`flex-1 md:flex-none px-6 py-3 ${userData.targetExam ? 'bg-slate-800 hover:bg-slate-700 border border-slate-600' : 'bg-amber-600 hover:bg-amber-500 border border-amber-500 shadow-lg shadow-amber-500/25'} rounded-xl text-sm font-bold text-white transition-colors flex items-center justify-center`}>
-                  <Edit3 className="w-4 h-4 mr-2" /> {userData.targetExam ? 'Switch Goal' : 'Set Your Goal Now'}
-                </button>
-                {!userData.activeRoadmap && userData.targetExam && (
-                  <button onClick={() => navigate('roadmap-setup', { exam: userData.targetExam, sub: userData.targetSub })} className="flex-1 md:flex-none px-6 py-3 bg-indigo-600 hover:bg-indigo-500 rounded-xl text-sm font-bold text-white transition-colors shadow-lg shadow-indigo-500/25 flex items-center justify-center">
-                    <Zap className="w-4 h-4 mr-2" /> Generate Complete Roadmap
-                  </button>
-                )}
-              </div>
-            </div>
-
-            {/* 👉 YAHAN HUMNE 'CHANGE PLAN' KA BUTTON LAGA DIYA HAI */}
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="text-xl font-bold text-white flex items-center">
-                <Map className="w-5 h-5 mr-2 text-indigo-400" /> Active AI Roadmap
-              </h3>
-              
-              {userData.activeRoadmap && (
-                <button 
-                  onClick={handleResetRoadmap}
-                  className="text-xs font-bold px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg border border-slate-700 transition-colors flex items-center"
-                >
-                  <Edit3 className="w-3 h-3 mr-1" /> Change Plan
-                </button>
-              )}
-            </div>
-
-            {userData.activeRoadmap ? (
-              <div className={`bg-slate-900 border rounded-3xl p-6 md:p-8 flex flex-col justify-between group transition-all shadow-xl ${userData.activeRoadmap.planMode === 'vvi_30_days' ? 'border-red-500/30 hover:border-red-500/50' : 'border-indigo-500/30 hover:border-indigo-500/50'}`}>
-                <div className="flex items-start space-x-6 mb-6">
-                  <div className={`w-16 h-16 rounded-full bg-slate-800 flex items-center justify-center border-4 shrink-0 shadow-inner ${userData.activeRoadmap.planMode === 'vvi_30_days' ? 'border-red-500/30' : 'border-indigo-500/30'}`}>
-                    {userData.activeRoadmap.planMode === 'vvi_30_days' ? <Flame className="w-8 h-8 text-red-400" /> : <Compass className="w-8 h-8 text-indigo-400" />}
-                  </div>
-                  <div className="flex-1">
-                    <h3 className="text-xl font-bold text-white mb-1">
-                      {String(userData.activeRoadmap.exam)} - {String(userData.activeRoadmap.sub)} 
-                    </h3>
-                    <p className="text-sm text-slate-400 mb-4">{userData.activeRoadmap.planMode === 'vvi_30_days' ? '30-Day VVI Crash Course' : 'Complete Syllabus Mastery'}</p>
-                    <div className="flex items-center">
-                      <div className="flex-1 bg-slate-800 h-2.5 rounded-full overflow-hidden mr-4">
-                        <div className={`${userData.activeRoadmap.planMode === 'vvi_30_days' ? 'bg-gradient-to-r from-red-500 to-orange-500' : 'bg-gradient-to-r from-indigo-500 to-emerald-500'} h-full rounded-full`} style={{ width: `${syllabusPct}%` }}></div>
-                      </div>
-                      <span className="text-white font-bold text-sm bg-slate-800 px-2 py-1 rounded-md">{syllabusPct}%</span>
-                    </div>
-                  </div>
-                </div>
-                <button onClick={() => navigate('roadmap')} className={`w-full px-6 py-4 text-white font-bold rounded-xl transition-all transform hover:scale-[1.02] active:scale-95 shadow-lg flex justify-center items-center ${userData.activeRoadmap.planMode === 'vvi_30_days' ? 'bg-gradient-to-r from-red-600 to-orange-600 shadow-red-500/25' : 'bg-gradient-to-r from-indigo-600 to-blue-600 shadow-indigo-500/25'}`}>
-                  Resume Guided Path <ArrowRight className="w-5 h-5 ml-2" />
-                </button>
-              </div>
-            ) : (
-               <div className="bg-slate-900 border border-slate-800 rounded-3xl p-8 flex flex-col items-center justify-center text-center border-dashed shadow-inner h-48">
-                  <Map className="w-10 h-10 mb-3 text-slate-600" />
-                  <p className="mb-4 text-slate-400 text-sm">You haven't generated a personalized AI roadmap yet.</p>
-                  <button onClick={() => navigate('roadmap-setup', { exam: userData.targetExam, sub: userData.targetSub })} className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-bold rounded-xl transition-colors shadow-lg">Generate Roadmap Now</button>
-               </div>
             )}
           </MotionDiv>
         </div>
 
         {/* Right Column: Daily Progress */}
-        <div className="space-y-8">
-          <MotionDiv delay={400} className="bg-slate-900 border border-slate-800 p-6 rounded-3xl relative overflow-hidden shadow-xl">
-            <div className="absolute top-0 right-0 w-24 h-24 bg-amber-500/5 rounded-full blur-2xl"></div>
-            <h3 className="text-lg font-bold text-white mb-4 flex items-center relative z-10">
-              <Flame className="w-5 h-5 mr-2 text-amber-500" /> Daily Goal Progress
+        <div className="lg:col-span-1 w-full">
+          <MotionDiv delay={400} className="bg-slate-900 border border-slate-800 p-5 md:p-6 rounded-2xl md:rounded-3xl relative overflow-hidden shadow-xl h-full flex flex-col justify-center w-full">
+            <div className="absolute top-0 right-0 w-20 md:w-24 h-20 md:h-24 bg-amber-500/5 rounded-full blur-2xl"></div>
+            <h3 className="text-base md:text-lg font-bold text-white mb-4 flex items-center relative z-10">
+              <Flame className="w-4 h-4 md:w-5 md:h-5 mr-2 text-amber-500 shrink-0" /> Daily Goal Progress
             </h3>
             <div className="flex items-center justify-between mb-2 relative z-10">
-              <span className="text-sm font-bold text-slate-300">XP Progress</span>
-              <span className="text-xs font-bold text-indigo-400 bg-indigo-500/10 px-2 py-0.5 rounded-full">{currentXp} / {targetXp} XP</span>
+              <span className="text-xs md:text-sm font-bold text-slate-300">XP Progress</span>
+              <span className="text-[10px] md:text-xs font-bold text-indigo-400 bg-indigo-500/10 px-2 py-0.5 rounded-full">{currentXp} / {targetXp} XP</span>
             </div>
-            <div className="w-full bg-slate-800 rounded-full h-3 overflow-hidden mb-4 relative z-10">
+            <div className="w-full bg-slate-800 rounded-full h-2 md:h-3 overflow-hidden mb-4 relative z-10">
               <div className="bg-gradient-to-r from-indigo-500 to-purple-500 h-full rounded-full transition-all duration-1000" style={{ width: `${dailyGoalPct}%` }}></div>
             </div>
-            <p className="text-xs text-slate-400 text-center relative z-10 bg-slate-950/50 p-2 rounded-lg">
+            <p className="text-[10px] md:text-xs text-slate-400 text-center relative z-10 bg-slate-950/50 p-2 md:p-3 rounded-lg leading-relaxed">
               {dailyGoalPct >= 75 ? <span className="text-emerald-400 font-bold">Awesome! Streak secured for today.</span> : `Earn ${Math.floor(targetXp * 0.75) - currentXp > 0 ? Math.floor(targetXp * 0.75) - currentXp : 0} more XP to keep your streak alive!`}
             </p>
           </MotionDiv>
         </div>
+
       </div>
+
+      {/* 4. BOTTOM ROW: FULL WIDTH SECTIONS */}
+      {/* 🚨 THIS CONTAINER IS NOW OUTSIDE THE GRID, ENSURING 100% WIDTH */}
+      <div className="flex flex-col space-y-6 md:space-y-8 mt-6 md:mt-8 w-full">
+        
+        <MotionDiv delay={300} className="w-full">
+          {/* Goal Display Card */}
+          <div className="bg-gradient-to-r from-indigo-900/40 to-slate-900 border border-indigo-500/30 rounded-2xl md:rounded-3xl p-5 md:p-8 shadow-xl flex flex-col lg:flex-row items-start lg:items-center justify-between relative overflow-hidden mb-6 md:mb-8 gap-5 md:gap-6 w-full">
+            <div className="absolute top-0 right-0 w-24 md:w-32 h-24 md:h-32 bg-indigo-500/20 rounded-full blur-2xl md:blur-3xl"></div>
+            
+            <div className="flex items-center relative z-10 w-full lg:w-auto">
+              <div className="w-14 h-14 md:w-20 md:h-20 min-w-[3.5rem] md:min-w-[5rem] rounded-xl md:rounded-2xl bg-indigo-500/20 text-indigo-400 flex items-center justify-center mr-4 md:mr-6 shrink-0 shadow-lg shadow-indigo-500/20 overflow-visible">
+                <Target className="w-6 h-6 md:w-10 md:h-10 shrink-0" />
+              </div>
+              <div>
+                <h2 className="text-[10px] md:text-xs lg:text-sm font-bold text-indigo-400 uppercase tracking-wider mb-1">
+                  {userData.targetExam ? 'Primary Goal Assigned' : 'No Goal Selected'}
+                </h2>
+                <h3 className="text-xl md:text-2xl lg:text-3xl font-black text-white leading-tight">
+                  {userData.targetExam || 'Setup Required'} 
+                  <span className="text-slate-400 font-medium text-lg md:text-xl block sm:inline">
+                    {userData.targetSub ? ` | ${userData.targetSub}` : ''}
+                  </span>
+                </h3>
+                <p className="text-slate-400 text-xs md:text-sm mt-1.5 md:mt-1 hidden sm:block max-w-2xl">
+                  {userData.targetExam ? 'Your entire dashboard and AI suggestions are optimized for this specific exam.' : 'Please set a goal to unlock your personalized AI roadmap.'}
+                </p>
+              </div>
+            </div>
+            
+            <div className="flex flex-col sm:flex-row gap-3 w-full lg:w-auto relative z-10 shrink-0 flex-wrap">
+              <button onClick={() => navigate('onboarding')} className={`w-full sm:w-auto px-4 py-2.5 md:px-6 md:py-3 ${userData.targetExam ? 'bg-slate-800 hover:bg-slate-700 border border-slate-600' : 'bg-amber-600 hover:bg-amber-500 border border-amber-500 shadow-lg shadow-amber-500/25'} rounded-xl text-xs md:text-sm font-bold text-white transition-colors flex items-center justify-center whitespace-nowrap`}>
+                <Edit3 className="w-3.5 h-3.5 md:w-4 md:h-4 mr-1.5 md:mr-2 shrink-0" /> {userData.targetExam ? 'Switch Goal' : 'Set Your Goal Now'}
+              </button>
+              {!userData.activeRoadmap && userData.targetExam && (
+                <button onClick={() => navigate('roadmap-setup', { exam: userData.targetExam, sub: userData.targetSub })} className="w-full sm:w-auto px-4 py-2.5 md:px-6 md:py-3 bg-indigo-600 hover:bg-indigo-500 rounded-xl text-xs md:text-sm font-bold text-white transition-colors shadow-lg shadow-indigo-500/25 flex items-center justify-center whitespace-nowrap">
+                  <Zap className="w-3.5 h-3.5 md:w-4 md:h-4 mr-1.5 md:mr-2 shrink-0" /> Generate Complete Roadmap
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Active AI Roadmap Header */}
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-3 sm:gap-0 w-full">
+            <h3 className="text-lg md:text-xl font-bold text-white flex items-center">
+              <Map className="w-4 h-4 md:w-5 md:h-5 mr-2 text-indigo-400 shrink-0" /> Active AI Roadmap
+            </h3>
+            
+            {userData.activeRoadmap && (
+              <button 
+                onClick={handleResetRoadmap}
+                className="text-[10px] md:text-xs font-bold px-3 py-1.5 md:py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg border border-slate-700 transition-colors flex items-center w-full sm:w-auto justify-center"
+              >
+                <Edit3 className="w-3 h-3 mr-1.5 shrink-0" /> Change Plan
+              </button>
+            )}
+          </div>
+
+          {/* Active AI Roadmap Card */}
+          {userData.activeRoadmap ? (
+            <div className={`bg-slate-900 border rounded-2xl md:rounded-3xl p-5 md:p-8 flex flex-col justify-between group transition-all shadow-xl w-full ${userData.activeRoadmap.planMode === 'vvi_30_days' ? 'border-red-500/30 hover:border-red-500/50' : 'border-indigo-500/30 hover:border-indigo-500/50'}`}>
+              <div className="flex items-center md:items-start space-x-3 md:space-x-6 mb-5 md:mb-6">
+                <div className={`w-12 h-12 md:w-20 md:h-20 min-w-[3rem] md:min-w-[5rem] rounded-full bg-slate-800 flex items-center justify-center border-2 md:border-4 shrink-0 shadow-inner overflow-visible ${userData.activeRoadmap.planMode === 'vvi_30_days' ? 'border-red-500/30' : 'border-indigo-500/30'}`}>
+                  {userData.activeRoadmap.planMode === 'vvi_30_days' ? <Flame className="w-6 h-6 md:w-10 md:h-10 text-red-400 shrink-0" /> : <Compass className="w-6 h-6 md:w-10 md:h-10 text-indigo-400 shrink-0" />}
+                </div>
+                <div className="flex-1 overflow-hidden">
+                  <h3 className="text-base md:text-lg lg:text-xl font-bold text-white mb-0.5 md:mb-1 truncate w-full">
+                    {String(userData.activeRoadmap.exam)} - {String(userData.activeRoadmap.sub)} 
+                  </h3>
+                  <p className="text-[10px] md:text-xs lg:text-sm text-slate-400 mb-2 md:mb-4 truncate w-full">{userData.activeRoadmap.planMode === 'vvi_30_days' ? '30-Day VVI Crash Course' : 'Complete Syllabus Mastery'}</p>
+                  <div className="flex items-center w-full">
+                    <div className="flex-1 bg-slate-800 h-2 md:h-2.5 rounded-full overflow-hidden mr-3 md:mr-4">
+                      <div className={`${userData.activeRoadmap.planMode === 'vvi_30_days' ? 'bg-gradient-to-r from-red-500 to-orange-500' : 'bg-gradient-to-r from-indigo-500 to-emerald-500'} h-full rounded-full`} style={{ width: `${syllabusPct}%` }}></div>
+                    </div>
+                    <span className="text-white font-bold text-xs md:text-sm bg-slate-800 px-1.5 py-0.5 md:px-2 md:py-1 rounded-md shrink-0">{syllabusPct}%</span>
+                  </div>
+                </div>
+              </div>
+              <button onClick={() => navigate('roadmap')} className={`w-full px-4 py-3 md:px-6 md:py-4 text-white text-sm md:text-base font-bold rounded-xl md:rounded-2xl transition-all transform hover:scale-[1.01] active:scale-95 shadow-lg flex justify-center items-center ${userData.activeRoadmap.planMode === 'vvi_30_days' ? 'bg-gradient-to-r from-red-600 to-orange-600 shadow-red-500/25' : 'bg-gradient-to-r from-indigo-600 to-blue-600 shadow-indigo-500/25'}`}>
+                Resume Guided Path <ArrowRight className="w-4 h-4 md:w-5 md:h-5 ml-1.5 md:ml-2 shrink-0" />
+              </button>
+            </div>
+          ) : (
+             <div className="bg-slate-900 border border-slate-800 rounded-2xl md:rounded-3xl p-6 md:p-8 flex flex-col items-center justify-center text-center border-dashed shadow-inner h-40 md:h-48 w-full">
+                <Map className="w-8 h-8 md:w-10 md:h-10 mb-2 md:mb-3 text-slate-600 shrink-0" />
+                <p className="mb-3 md:mb-4 text-slate-400 text-xs md:text-sm max-w-sm">You haven't generated a personalized AI roadmap yet.</p>
+                <button onClick={() => navigate('roadmap-setup', { exam: userData.targetExam, sub: userData.targetSub })} className="px-4 py-2 md:px-5 md:py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs md:text-sm font-bold rounded-xl transition-colors shadow-lg">Generate Roadmap Now</button>
+             </div>
+          )}
+        </MotionDiv>
+      </div>
+
     </div>
   );
 };
