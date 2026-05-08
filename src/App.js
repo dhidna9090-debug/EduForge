@@ -7,7 +7,7 @@ import {
   List, FileText, Layers, AlertTriangle, ClipboardList, CheckSquare, 
   Timer, Edit3, Wifi, Server, Database, DownloadCloud, User, History, 
   BarChart2, Check, MinusCircle, CreditCard, Smartphone, QrCode, ShieldCheck, 
-  Crown, Unlock, Camera, Lightbulb, Flame, TrendingUp, ChevronLeft, Plus, Trash2, Coffee, Users, MessageCircle, Star
+  Crown, Unlock, Camera, Lightbulb, Flame, TrendingUp, ChevronLeft, Plus, Trash2, Coffee, Users, MessageCircle, Star, Volume2, VolumeX
 } from 'lucide-react';
 import html2canvas from 'html2canvas';
 import { LineChart, Line, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, Legend, ResponsiveContainer } from 'recharts';
@@ -3228,7 +3228,229 @@ const OnboardingScreen = ({ navigate, userData, setUserData }) => {
     </div>
   );
 };
+
+// --- STRICT ANTI-CHEAT FOCUS TIMER (FLOATING WIDGET) ---
+// --- STRICT ANTI-CHEAT FOCUS TIMER (FLOATING WIDGET + WEB AUDIO API) ---
+// --- STRICT ANTI-CHEAT FOCUS TIMER (100% BULLETPROOF) ---
+const FocusTimer = ({ onClose }) => {
+  const [customMinutes, setCustomMinutes] = useState(25);
+  const [timeLeft, setTimeLeft] = useState(25 * 60);
+  const [isActive, setIsActive] = useState(false);
+  const [mode, setMode] = useState('focus'); 
+  const [isCheating, setIsCheating] = useState(false); 
+  const [isSilentMode, setIsSilentMode] = useState(false);
+  const [isMinimized, setIsMinimized] = useState(false);
+  
+  // NAYA: Refs for instant detection without React re-render lag
+  const activeRef = useRef(isActive);
+  const modeRef = useRef(mode);
+  const silentRef = useRef(isSilentMode);
+  const audioCtxRef = useRef(null);
+
+  // Sync state to refs instantly
+  useEffect(() => {
+    activeRef.current = isActive;
+    modeRef.current = mode;
+    silentRef.current = isSilentMode;
+  }, [isActive, mode, isSilentMode]);
+
+  // Bulletproof Beep Generator
+  const playBeep = () => {
+    if (silentRef.current || !audioCtxRef.current) return;
+    try {
+      const ctx = audioCtxRef.current;
+      if (ctx.state === 'suspended') ctx.resume();
+      
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      
+      osc.type = 'square'; 
+      osc.frequency.setValueAtTime(800, ctx.currentTime); // Sharp Beep
+      gain.gain.setValueAtTime(0.3, ctx.currentTime); // Volume
+      
+      osc.start();
+      osc.stop(ctx.currentTime + 0.5); // Play for half a second
+    } catch (e) {
+      console.log("Beep failed:", e);
+    }
+  };
+
+  // Timer Logic
+  useEffect(() => {
+    let interval = null;
+    if (isActive && timeLeft > 0) {
+      interval = setInterval(() => setTimeLeft(t => t - 1), 1000);
+    } else if (timeLeft === 0 && isActive) {
+      setIsActive(false);
+      alert(mode === 'focus' ? "Session Complete! Take a break." : "Break Over! Back to work.");
+      if (document.fullscreenElement) document.exitFullscreen().catch(e => console.log(e));
+      setMode(mode === 'focus' ? 'break' : 'focus');
+      setTimeLeft(mode === 'focus' ? 5 * 60 : customMinutes * 60);
+      setIsMinimized(false);
+    }
+    return () => clearInterval(interval);
+  }, [isActive, timeLeft, mode, customMinutes]);
+
+  // Anti-Cheat Logic (Uses Refs & Window Blur for 100% Strictness)
+  useEffect(() => {
+    const handleCheatDetection = () => {
+      // Agar timer chal raha hai aur focus mode mein hai
+      if (activeRef.current && modeRef.current === 'focus') {
+        setIsActive(false); 
+        setIsCheating(true); 
+        setIsMinimized(false); 
+        playBeep(); // Instant hardware beep
+      }
+    };
+
+    const handleVisibility = () => {
+      if (document.hidden) handleCheatDetection();
+    };
+
+    // 1. Detect Tab Switch or Minimize
+    document.addEventListener("visibilitychange", handleVisibility);
+    
+    // 2. Detect ANY click outside the browser (Ultimate Strictness)
+    window.addEventListener("blur", handleCheatDetection);
+
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisibility);
+      window.removeEventListener("blur", handleCheatDetection);
+    };
+  }, []); // Khali array
+  const toggleTimer = () => {
+    if (!isActive) {
+      // Audio Engine Unlock on Click (Hack for Chrome)
+      if (!audioCtxRef.current) {
+        audioCtxRef.current = new (window.AudioContext || window.webkitAudioContext)();
+      }
+      if (audioCtxRef.current.state === 'suspended') audioCtxRef.current.resume();
+
+      // Silent beep to whitelist the audio engine completely
+      const osc = audioCtxRef.current.createOscillator();
+      const gain = audioCtxRef.current.createGain();
+      osc.connect(gain);
+      gain.connect(audioCtxRef.current.destination);
+      gain.gain.value = 0; // 0 volume
+      osc.start();
+      osc.stop(audioCtxRef.current.currentTime + 0.01);
+
+      document.documentElement.requestFullscreen().catch((e) => console.log("Fullscreen blocked"));
+      setIsMinimized(true); 
+    } else {
+      setIsMinimized(false);
+    }
+    setIsActive(!isActive);
+    setIsCheating(false); 
+  };
+
+  const resetTimer = () => {
+    setIsActive(false);
+    setIsCheating(false);
+    setIsMinimized(false);
+    setTimeLeft(mode === 'focus' ? customMinutes * 60 : 5 * 60);
+    if (document.fullscreenElement) document.exitFullscreen().catch(e => console.log(e));
+  };
+
+  const handleClose = () => {
+    if (document.fullscreenElement) document.exitFullscreen().catch(e => console.log(e));
+    onClose();
+  };
+
+  const formatTime = (seconds) => {
+    const m = Math.floor(seconds / 60).toString().padStart(2, '0');
+    const s = (seconds % 60).toString().padStart(2, '0');
+    return `${m}:${s}`;
+  };
+
+  // NAYA: Custom Minutes Setter jab timer band ho
+  useEffect(() => {
+    if (!isActive && mode === 'focus' && !isCheating) {
+      setTimeLeft(customMinutes * 60);
+    }
+  }, [customMinutes, isActive, mode, isCheating]);
+
+
+  if (isMinimized) {
+    return (
+      <div className="fixed top-24 right-6 z-[100] bg-slate-900 border border-indigo-500/50 shadow-2xl shadow-indigo-500/20 rounded-full px-4 py-2 flex items-center cursor-pointer hover:bg-slate-800 transition-all" onClick={() => setIsMinimized(false)}>
+        <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse mr-3"></div>
+        <span className="font-mono font-bold text-indigo-400 text-lg mr-3">{formatTime(timeLeft)}</span>
+        <button onClick={(e) => { e.stopPropagation(); toggleTimer(); }} className="text-slate-400 hover:text-white">
+          <X className="w-4 h-4"/>
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="fixed top-24 right-6 z-[100] w-80">
+      <div className={`relative border ${isCheating ? 'border-red-500 bg-red-950/90 shadow-[0_0_50px_rgba(239,68,68,0.5)]' : 'border-slate-700 bg-slate-900/95'} backdrop-blur-md rounded-3xl p-6 flex flex-col items-center shadow-2xl transition-all duration-300`}>
+        
+        <div className="flex justify-between w-full mb-4">
+          <button onClick={() => setIsSilentMode(!isSilentMode)} className={`flex items-center px-2 py-1 rounded-full text-[10px] font-bold transition-colors ${isSilentMode ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30' : 'bg-slate-800 text-slate-400 hover:text-white border border-slate-700'}`}>
+            {isSilentMode ? <VolumeX className="w-3 h-3 mr-1" /> : <Volume2 className="w-3 h-3 mr-1" />}
+            {isSilentMode ? 'Silent' : 'Sound'}
+          </button>
+          
+          <div className="flex gap-2">
+            <button onClick={() => setIsMinimized(true)} className="text-slate-400 hover:text-white transition-colors" title="Minimize">
+              <MinusCircle className="w-5 h-5" />
+            </button>
+            <button onClick={handleClose} className="text-slate-400 hover:text-red-400 transition-colors" title="Close">
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+        </div>
+
+        {isCheating ? (
+          <div className="w-16 h-16 mt-2 rounded-full flex items-center justify-center mb-4 shadow-lg bg-red-500/20 text-red-500 animate-bounce">
+            <AlertTriangle className="w-8 h-8" />
+          </div>
+        ) : (
+          <div className={`w-16 h-16 mt-2 rounded-full flex items-center justify-center mb-4 shadow-lg ${mode === 'focus' ? 'bg-indigo-500/20 text-indigo-400' : 'bg-emerald-500/20 text-emerald-400'}`}>
+            <Timer className={`w-8 h-8 ${isActive ? 'animate-pulse' : ''}`} />
+          </div>
+        )}
+
+        <h2 className={`text-lg font-black mb-1 text-center ${isCheating ? 'text-red-400' : 'text-white'}`}>
+          {isCheating ? 'Distraction Detected!' : (mode === 'focus' ? 'Deep Work Mode' : 'Short Break')}
+        </h2>
+        
+        <p className="text-slate-400 mb-4 text-center text-xs font-medium">
+          {isCheating ? 'Focus streak broken!' : 'Screen locked. Stay focused.'}
+        </p>
+
+        <div className={`text-5xl font-black mb-6 font-mono tracking-widest ${isActive ? 'text-white drop-shadow-[0_0_10px_rgba(255,255,255,0.5)]' : (isCheating ? 'text-red-500' : 'text-slate-500')}`}>
+          {formatTime(timeLeft)}
+        </div>
+
+        {!isActive && !isCheating && mode === 'focus' && (
+          <div className="flex gap-2 mb-6 w-full justify-center">
+            {[15, 25, 50].map(m => (
+              <button key={m} onClick={() => setCustomMinutes(m)} className={`px-3 py-1 rounded-md text-xs font-bold border transition-colors ${customMinutes === m ? 'bg-indigo-500/20 border-indigo-500 text-indigo-300' : 'bg-slate-800 border-slate-700 text-slate-400 hover:text-white hover:border-slate-500'}`}>
+                {m}m
+              </button>
+            ))}
+          </div>
+        )}
+
+        <div className="flex gap-3 w-full">
+          <button onClick={toggleTimer} className={`flex-1 py-2.5 text-sm font-bold rounded-xl flex items-center justify-center transition-all shadow-lg ${isActive ? 'bg-amber-500/20 text-amber-400 border border-amber-500/50 hover:bg-amber-500/30' : (isCheating ? 'bg-red-600 text-white hover:bg-red-500' : 'bg-indigo-600 text-white hover:bg-indigo-500 shadow-indigo-500/25')}`}>
+            {isActive ? 'Pause' : (isCheating ? 'Resume' : 'Start')}
+          </button>
+          <button onClick={resetTimer} className="px-4 py-2.5 bg-slate-800 text-slate-300 text-sm font-bold rounded-xl hover:bg-slate-700 transition-colors border border-slate-700">
+            Reset
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
 const DashboardScreen = ({ navigate, userData, onRoadmapGenerate }) => {
+  const [showTimer, setShowTimer] = useState(false);
   const exams = [
     { id: 'gate', title: 'GATE', icon: <Compass className="w-5 h-5 md:w-6 md:h-6" />, color: 'from-orange-500 to-red-500', desc: 'Engineering (CS, ME, CE...)' },
     { id: 'upsc', title: 'UPSC CSE', icon: <Target className="w-5 h-5 md:w-6 md:h-6" />, color: 'from-emerald-500 to-teal-600', desc: 'Civil Services (Pre/Mains)' },
@@ -3336,13 +3558,13 @@ const DashboardScreen = ({ navigate, userData, onRoadmapGenerate }) => {
           <span className="text-[10px] md:text-xs text-slate-400">Custom Schedule</span>
         </button>
 
-        <button className="bg-slate-900 border border-slate-800 rounded-xl md:rounded-2xl p-4 md:p-6 flex flex-col items-center justify-center text-center transition-all opacity-70 cursor-not-allowed shadow-lg relative overflow-hidden w-full">
-          <div className="absolute top-2 right-2 md:top-3 md:right-3 text-[9px] md:text-[10px] font-bold px-2 py-0.5 bg-slate-800 text-slate-400 rounded-full">Soon</div>
-          <div className="w-10 h-10 md:w-12 md:h-12 rounded-full bg-purple-500/10 text-purple-400 flex items-center justify-center mb-2 md:mb-3 shrink-0">
-            <Users className="w-5 h-5 md:w-6 md:h-6 shrink-0" />
+       {/* YE NAYA CODE WAHAN PASTE KARNA HAI */}
+        <button onClick={() => setShowTimer(true)} className="bg-slate-900 border border-slate-800 hover:border-purple-500/50 rounded-xl md:rounded-2xl p-4 md:p-6 flex flex-col items-center justify-center text-center transition-all hover:bg-slate-800 group shadow-lg w-full">
+          <div className="w-10 h-10 md:w-12 md:h-12 rounded-full bg-purple-500/10 text-purple-400 flex items-center justify-center mb-2 md:mb-3 group-hover:scale-110 transition-transform shrink-0">
+            <Timer className="w-5 h-5 md:w-6 md:h-6 shrink-0" />
           </div>
-          <span className="font-bold text-white mb-1 text-sm md:text-base">Study Room</span>
-          <span className="text-[10px] md:text-xs text-slate-400">Co-learning</span>
+          <span className="font-bold text-white mb-1 text-sm md:text-base">Focus Timer</span>
+          <span className="text-[10px] md:text-xs text-slate-400">Deep Work Mode</span>
         </button>
       </MotionDiv>
 
@@ -3494,6 +3716,8 @@ const DashboardScreen = ({ navigate, userData, onRoadmapGenerate }) => {
           )}
         </MotionDiv>
       </div>
+      {/* FOCUS TIMER OVERLAY */}
+      {showTimer && <FocusTimer onClose={() => setShowTimer(false)} />}
     {/* HIDDEN SHAREABLE CARD */}
       <div className="absolute left-[-9999px] top-0">
         <div id="shareable-target-card" className="w-[500px] h-[300px] bg-gradient-to-br from-slate-900 to-indigo-950 border-2 border-indigo-500/50 rounded-3xl p-8 flex flex-col justify-between relative overflow-hidden">
