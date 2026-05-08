@@ -5,10 +5,11 @@ import {
   CheckCircle, Clock, ArrowRight, Zap, ArrowLeft, PlayCircle, BookMarked,
   MessageSquare, Send, X, Activity, Globe, Map, ExternalLink, Calendar,
   List, FileText, Layers, AlertTriangle, ClipboardList, CheckSquare, 
-  Timer, Edit3, Wifi, Server, Database, DownloadCloud, User, History, html2canvas,
+  Timer, Edit3, Wifi, Server, Database, DownloadCloud, User, History, 
   BarChart2, Check, MinusCircle, CreditCard, Smartphone, QrCode, ShieldCheck, 
   Crown, Unlock, Camera, Lightbulb, Flame, TrendingUp, ChevronLeft, Plus, Trash2, Coffee, Users, MessageCircle, Star
 } from 'lucide-react';
+import html2canvas from 'html2canvas';
 import { LineChart, Line, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, Legend, ResponsiveContainer } from 'recharts';
 import { initializeApp } from 'firebase/app';
 import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, signOut } from 'firebase/auth';
