@@ -13,7 +13,6 @@ import { LineChart, Line, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, Cart
 import { initializeApp } from 'firebase/app';
 import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, signOut } from 'firebase/auth';
 import { getFirestore, doc, setDoc, onSnapshot } from 'firebase/firestore';
-import html2canvas from 'html2canvas';
 const firebaseConfig = {
   apiKey: "AIzaSyC3RaNBvctI75u5QOHSBrF_AnhPrft391s",
   authDomain: "eduforge-29535.firebaseapp.com",
