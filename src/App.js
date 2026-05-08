@@ -3263,27 +3263,18 @@ const DashboardScreen = ({ navigate, userData, onRoadmapGenerate }) => {
         scale: 2 
       });
       
-      // 2. Firebase mein Download Data Store Karein
-      const downloadId = `dl_${Date.now()}`;
-      await setDoc(doc(db, 'apps', appId, 'activity_logs', downloadId), {
-        userName: userData?.name || 'User',
-        targetExam: userData?.targetExam || 'N/A',
-        action: 'Downloaded Target Card',
-        timestamp: new Date()
-      });
-
-      // 3. Image Download Karwayein
+      // 2. Image Download Karwayein (Bina Firebase error ke)
       const dataUrl = canvas.toDataURL('image/png');
       const link = document.createElement('a');
       link.href = dataUrl;
-      link.download = `EduForge_${userData.targetExam || 'Goal'}.png`;
+      link.download = `EduForge_${userData?.targetExam || 'Goal'}.png`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
 
-      console.log("Activity logged in Firebase!");
+      console.log("Card successfully downloaded!");
     } catch (error) {
-      console.error("Error:", error);
+      console.error("Error generating card:", error);
     }
   };
 
