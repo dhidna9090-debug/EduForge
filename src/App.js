@@ -13,7 +13,7 @@ import html2canvas from 'html2canvas';
 import { LineChart, Line, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, Legend, ResponsiveContainer } from 'recharts';
 import { initializeApp } from 'firebase/app';
 import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, signOut } from 'firebase/auth';
-import { getFirestore, doc, setDoc, onSnapshot } from 'firebase/firestore';
+import { getFirestore, doc, getDoc, setDoc, updateDoc, onSnapshot } from 'firebase/firestore';
 const firebaseConfig = {
   apiKey: "AIzaSyC3RaNBvctI75u5QOHSBrF_AnhPrft391s",
   authDomain: "eduforge-29535.firebaseapp.com",
@@ -1268,6 +1268,7 @@ const StrategyScreen = ({ navigate, context, userData }) => {
   const [selectedSub, setSelectedSub] = useState(context?.sub || userData?.targetSub || 'Computer Science (CS)');
   const [aiStrategy, setAiStrategy] = useState(null);
   const [isFetching, setIsFetching] = useState(false);
+  const [isDownloading, setIsDownloading] = useState(false);
 
   const exams = Object.keys(SYLLABUS_DATA);
   const subs = SYLLABUS_DATA[selectedExam] ? Object.keys(SYLLABUS_DATA[selectedExam]) : [];
@@ -1286,6 +1287,344 @@ const StrategyScreen = ({ navigate, context, userData }) => {
     setIsFetching(false);
   };
 
+  // --- PDF DOWNLOAD FUNCTION ---
+  const handleDownloadPDF = async () => {
+    setIsDownloading(true);
+
+    // Load jsPDF dynamically
+    const script = document.createElement('script');
+    script.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
+    document.head.appendChild(script);
+
+    await new Promise((resolve) => { script.onload = resolve; });
+
+    try {
+      const { jsPDF } = window.jspdf;
+      const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+
+      const pageW = 210;
+      const pageH = 297;
+      const margin = 18;
+      const contentW = pageW - margin * 2;
+      let y = 0;
+
+      const addPage = () => {
+        pdf.addPage();
+        y = 20;
+      };
+
+      const checkY = (needed = 10) => {
+        if (y + needed > pageH - 20) addPage();
+      };
+
+      // --- HEADER BANNER ---
+      pdf.setFillColor(79, 70, 229); // Indigo
+      pdf.rect(0, 0, pageW, 42, 'F');
+
+      pdf.setFillColor(99, 102, 241, 0.3);
+      pdf.circle(180, -10, 40, 'F');
+      pdf.circle(-10, 30, 25, 'F');
+
+      pdf.setTextColor(255, 255, 255);
+      pdf.setFontSize(22);
+      pdf.setFont('helvetica', 'bold');
+      pdf.text('EduForge Practice Strategy', margin, 18);
+
+      pdf.setFontSize(10);
+      pdf.setFont('helvetica', 'normal');
+      pdf.setTextColor(199, 210, 254);
+      pdf.text(`${selectedExam}  |  ${selectedSub}`, margin, 27);
+      pdf.text(`Generated: ${new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })}`, margin, 35);
+
+      y = 55;
+
+      // --- EXAM INFO CARD ---
+      pdf.setFillColor(238, 242, 255);
+      pdf.roundedRect(margin, y, contentW, 22, 3, 3, 'F');
+      pdf.setDrawColor(165, 180, 252);
+      pdf.setLineWidth(0.4);
+      pdf.roundedRect(margin, y, contentW, 22, 3, 3, 'S');
+
+      pdf.setFontSize(9);
+      pdf.setFont('helvetica', 'bold');
+      pdf.setTextColor(67, 56, 202);
+      pdf.text('ASPIRANT', margin + 6, y + 8);
+      pdf.setFont('helvetica', 'normal');
+      pdf.setTextColor(55, 48, 163);
+      pdf.text(userData?.name || 'Student', margin + 6, y + 15);
+
+      pdf.setFont('helvetica', 'bold');
+      pdf.setTextColor(67, 56, 202);
+      pdf.text('TARGET EXAM', margin + 70, y + 8);
+      pdf.setFont('helvetica', 'normal');
+      pdf.setTextColor(55, 48, 163);
+      pdf.text(`${selectedExam} — ${selectedSub}`, margin + 70, y + 15);
+
+      pdf.setFont('helvetica', 'bold');
+      pdf.setTextColor(67, 56, 202);
+      pdf.text('CURRENT STREAK', margin + 145, y + 8);
+      pdf.setFont('helvetica', 'normal');
+      pdf.setTextColor(55, 48, 163);
+      pdf.text(`${userData?.streak || 0} Days`, margin + 145, y + 15);
+
+      y += 32;
+
+      // --- SECTION DIVIDER ---
+      const drawSectionHeader = (title, icon = '▶') => {
+        checkY(18);
+        pdf.setFillColor(79, 70, 229);
+        pdf.rect(margin, y, 4, 10, 'F');
+        pdf.setFontSize(12);
+        pdf.setFont('helvetica', 'bold');
+        pdf.setTextColor(30, 27, 75);
+        pdf.text(`${icon}  ${title}`, margin + 8, y + 7.5);
+        pdf.setDrawColor(199, 210, 254);
+        pdf.setLineWidth(0.3);
+        pdf.line(margin, y + 11, margin + contentW, y + 11);
+        y += 17;
+      };
+
+      // Parse the AI strategy or use default phases
+      const strategyContent = aiStrategy || null;
+      const phases = [
+        {
+          title: 'Phase 1: Foundation & Concept Building',
+          color: [59, 130, 246],
+          lightColor: [239, 246, 255],
+          borderColor: [147, 197, 253],
+          tips: [
+            `Study standard textbooks and NCERT/official sources for ${selectedExam} ${selectedSub}.`,
+            'Watch high-quality video lectures (NPTEL / Unacademy / Vision IAS) for each topic.',
+            'Make short handwritten notes: definitions, formulas, and important facts.',
+            'Complete one topic fully before moving to the next.',
+            'Duration: First 40% of total preparation time.'
+          ]
+        },
+        {
+          title: 'Phase 2: Targeted Practice & PYQs',
+          color: [16, 185, 129],
+          lightColor: [236, 253, 245],
+          borderColor: [110, 231, 183],
+          tips: [
+            `Solve last 10 years of ${selectedExam} Previous Year Questions (PYQs) topic-wise.`,
+            "Analyze each PYQ's explanation even when your answer is correct.",
+            'Identify the top 3 weakest topics and give them extra time.',
+            'Maintain an Error Log / Mistake Notebook for repeated mistakes.',
+            'Duration: Next 30% of total preparation time.'
+          ]
+        },
+        {
+          title: 'Phase 3: Revision Methodology',
+          color: [245, 158, 11],
+          lightColor: [255, 251, 235],
+          borderColor: [253, 211, 77],
+          tips: [
+            'Revise your short notes, formula book, and error log weekly.',
+            'Use spaced repetition: review older topics every 3–4 days.',
+            'Create mind maps for complex/interlinked topics.',
+            'Prioritize high-weightage sections based on the official exam pattern.',
+            'Duration: Next 20% of total preparation time.'
+          ]
+        },
+        {
+          title: 'Phase 4: Mock Test Simulation',
+          color: [239, 68, 68],
+          lightColor: [254, 242, 242],
+          borderColor: [252, 165, 165],
+          tips: [
+            `Simulate full ${selectedExam} exams in real exam conditions (no phone, timed).`,
+            'Attempt at least 5 full-length mocks before the actual exam.',
+            'After each mock: spend 2× the test time reviewing your mistakes.',
+            'Focus on time management and skipping strategy for difficult questions.',
+            'Duration: Final 10% of total preparation time (last 2–4 weeks).'
+          ]
+        }
+      ];
+
+      drawSectionHeader('4-Phase Preparation Roadmap', '▶');
+
+      phases.forEach((phase, idx) => {
+        checkY(52);
+
+        // Phase card background
+        pdf.setFillColor(...phase.lightColor);
+        pdf.roundedRect(margin, y, contentW, 48, 3, 3, 'F');
+        pdf.setDrawColor(...phase.borderColor);
+        pdf.setLineWidth(0.4);
+        pdf.roundedRect(margin, y, contentW, 48, 3, 3, 'S');
+
+        // Left color bar
+        pdf.setFillColor(...phase.color);
+        pdf.roundedRect(margin, y, 4, 48, 2, 2, 'F');
+
+        // Phase number badge
+        pdf.setFillColor(...phase.color);
+        pdf.circle(margin + 14, y + 9, 6, 'F');
+        pdf.setTextColor(255, 255, 255);
+        pdf.setFontSize(9);
+        pdf.setFont('helvetica', 'bold');
+        pdf.text(`${idx + 1}`, margin + 14, y + 12, { align: 'center' });
+
+        // Phase title
+        pdf.setFontSize(10);
+        pdf.setFont('helvetica', 'bold');
+        pdf.setTextColor(30, 27, 75);
+        pdf.text(phase.title, margin + 24, y + 10);
+
+        // Tips
+        pdf.setFontSize(8.5);
+        pdf.setFont('helvetica', 'normal');
+        pdf.setTextColor(71, 85, 105);
+
+        let tipY = y + 18;
+        phase.tips.forEach((tip, tIdx) => {
+          const lines = pdf.splitTextToSize(`• ${tip}`, contentW - 16);
+          pdf.text(lines, margin + 10, tipY);
+          tipY += lines.length * 4.5;
+        });
+
+        y += 54;
+      });
+
+      // --- AI STRATEGY SECTION (if fetched) ---
+      if (strategyContent) {
+        checkY(20);
+        drawSectionHeader('Live AI Expert Strategy', '★');
+
+        pdf.setFillColor(250, 245, 255);
+        pdf.roundedRect(margin, y, contentW, 8, 2, 2, 'F');
+        pdf.setFontSize(8);
+        pdf.setFont('helvetica', 'italic');
+        pdf.setTextColor(109, 40, 217);
+        pdf.text('AI-generated personalized advice based on your exam pattern:', margin + 4, y + 5.5);
+        y += 13;
+
+        const cleanStrategy = strategyContent
+          .replace(/\*\*/g, '')
+          .replace(/\*/g, '')
+          .replace(/#{1,3} /g, '')
+          .trim();
+
+        const stratLines = pdf.splitTextToSize(cleanStrategy, contentW - 8);
+        pdf.setFontSize(9);
+        pdf.setFont('helvetica', 'normal');
+        pdf.setTextColor(44, 44, 44);
+
+        stratLines.forEach((line) => {
+          checkY(6);
+          const isPhaseHead = /^Phase \d/i.test(line.trim());
+          if (isPhaseHead) {
+            pdf.setFont('helvetica', 'bold');
+            pdf.setTextColor(79, 70, 229);
+          } else {
+            pdf.setFont('helvetica', 'normal');
+            pdf.setTextColor(44, 44, 44);
+          }
+          pdf.text(line, margin + 4, y);
+          y += line.trim() === '' ? 4 : 5.5;
+        });
+
+        y += 8;
+      }
+
+      // --- SYLLABUS QUICK REFERENCE ---
+      checkY(20);
+      drawSectionHeader('Syllabus Weightage Quick Reference', '◈');
+
+      const syllabus = SYLLABUS_DATA[selectedExam]?.[selectedSub] || [];
+      if (syllabus.length > 0) {
+        // Table header
+        pdf.setFillColor(79, 70, 229);
+        pdf.rect(margin, y, contentW, 8, 'F');
+        pdf.setTextColor(255, 255, 255);
+        pdf.setFontSize(8.5);
+        pdf.setFont('helvetica', 'bold');
+        pdf.text('Topic / Section', margin + 4, y + 5.5);
+        pdf.text('Weightage', margin + contentW - 28, y + 5.5);
+        y += 8;
+
+        syllabus.forEach((item, idx) => {
+          checkY(8);
+          const rowBg = idx % 2 === 0 ? [248, 247, 255] : [255, 255, 255];
+          pdf.setFillColor(...rowBg);
+          pdf.rect(margin, y, contentW, 7.5, 'F');
+
+          pdf.setTextColor(44, 44, 44);
+          pdf.setFontSize(8);
+          pdf.setFont('helvetica', 'normal');
+          const topicText = pdf.splitTextToSize(String(item.section), contentW - 40);
+          pdf.text(topicText[0], margin + 4, y + 5);
+
+          // Weightage bar
+          const wPct = Math.min(1, (item.weight || 10) / 30);
+          pdf.setFillColor(199, 210, 254);
+          pdf.roundedRect(margin + contentW - 40, y + 2, 30, 3.5, 1, 1, 'F');
+          pdf.setFillColor(79, 70, 229);
+          pdf.roundedRect(margin + contentW - 40, y + 2, 30 * wPct, 3.5, 1, 1, 'F');
+
+          pdf.setFont('helvetica', 'bold');
+          pdf.setTextColor(67, 56, 202);
+          pdf.text(`${item.weight || '—'}%`, margin + contentW - 7, y + 5, { align: 'right' });
+
+          y += 7.5;
+        });
+        y += 6;
+      }
+
+      // --- DAILY SCHEDULE TEMPLATE ---
+      checkY(65);
+      drawSectionHeader('Recommended Daily Study Template', '⏱');
+
+      const scheduleItems = [
+        { time: '6:00 – 8:00 AM',  activity: 'Morning Session: New Concept Study (fresh mind)', color: [59, 130, 246], light: [239, 246, 255] },
+        { time: '10:00 – 12:00 PM', activity: 'Practice Session: PYQs & Topic-wise Tests',        color: [16, 185, 129], light: [236, 253, 245] },
+        { time: '4:00 – 6:00 PM',  activity: 'Revision Session: Short Notes & Error Log',         color: [245, 158, 11], light: [255, 251, 235] },
+        { time: '9:00 – 10:00 PM', activity: 'Wrap-up: Plan tomorrow + 20-min light reading',     color: [139, 92, 246], light: [245, 243, 255] },
+      ];
+
+      scheduleItems.forEach((s) => {
+        checkY(12);
+        pdf.setFillColor(...s.light);
+        pdf.roundedRect(margin, y, contentW, 9, 2, 2, 'F');
+        pdf.setFillColor(...s.color);
+        pdf.roundedRect(margin, y, 3, 9, 1, 1, 'F');
+        pdf.setFontSize(8);
+        pdf.setFont('helvetica', 'bold');
+        pdf.setTextColor(...s.color);
+        pdf.text(s.time, margin + 7, y + 6);
+        pdf.setFont('helvetica', 'normal');
+        pdf.setTextColor(44, 44, 44);
+        pdf.text(s.activity, margin + 52, y + 6);
+        y += 11;
+      });
+
+      // --- FOOTER ON EVERY PAGE ---
+      const totalPages = pdf.internal.getNumberOfPages();
+      for (let p = 1; p <= totalPages; p++) {
+        pdf.setPage(p);
+        pdf.setFillColor(245, 244, 255);
+        pdf.rect(0, pageH - 14, pageW, 14, 'F');
+        pdf.setDrawColor(199, 210, 254);
+        pdf.setLineWidth(0.3);
+        pdf.line(0, pageH - 14, pageW, pageH - 14);
+        pdf.setFontSize(8);
+        pdf.setFont('helvetica', 'normal');
+        pdf.setTextColor(100, 116, 139);
+        pdf.text(`EduForge Practice Strategy  |  ${selectedExam} – ${selectedSub}`, margin, pageH - 5.5);
+        pdf.text(`Page ${p} of ${totalPages}`, pageW - margin, pageH - 5.5, { align: 'right' });
+      }
+
+      const safeExam = selectedExam.replace(/[^a-zA-Z0-9]/g, '_');
+      const safeSub = selectedSub.replace(/[^a-zA-Z0-9]/g, '_');
+      pdf.save(`EduForge_Practice_Strategy_${safeExam}_${safeSub}.pdf`);
+    } catch (err) {
+      console.error('PDF Error:', err);
+      alert('PDF generation failed. Please try again.');
+    } finally {
+      setIsDownloading(false);
+    }
+  };
+
   return (
     <div className="max-w-5xl mx-auto pb-20">
       <MotionDiv className="flex flex-col md:flex-row items-start md:items-center justify-between mb-8 gap-4">
@@ -1298,13 +1637,26 @@ const StrategyScreen = ({ navigate, context, userData }) => {
           </h1>
           <p className="text-slate-400 mt-2 text-lg">Phase-by-phase customized preparation methodology.</p>
         </div>
+
+        {/* DOWNLOAD PDF BUTTON */}
+        <button
+          onClick={handleDownloadPDF}
+          disabled={isDownloading}
+          className="flex items-center px-6 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-bold rounded-xl transition-all shadow-lg shadow-indigo-500/25 transform hover:-translate-y-1 active:scale-95 disabled:opacity-70 disabled:scale-100 whitespace-nowrap"
+        >
+          {isDownloading ? (
+            <><div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin mr-3"></div> Generating PDF...</>
+          ) : (
+            <><DownloadCloud className="w-5 h-5 mr-2" /> Download Strategy PDF</>
+          )}
+        </button>
       </MotionDiv>
 
       <MotionDiv delay={100} className="bg-slate-900 border border-slate-800 rounded-3xl p-6 md:p-8 shadow-xl mb-12">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
           <div>
             <label className="block text-sm font-medium text-slate-300 mb-2">Select Examination</label>
-            <select 
+            <select
               value={selectedExam}
               onChange={(e) => setSelectedExam(e.target.value)}
               className="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-amber-500 transition-all appearance-none"
@@ -1315,7 +1667,7 @@ const StrategyScreen = ({ navigate, context, userData }) => {
           {subs.length > 0 && (
             <div>
               <label className="block text-sm font-medium text-slate-300 mb-2">Select Branch / Stage</label>
-              <select 
+              <select
                 value={selectedSub}
                 onChange={(e) => setSelectedSub(e.target.value)}
                 className="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-amber-500 transition-all appearance-none"
@@ -1326,50 +1678,83 @@ const StrategyScreen = ({ navigate, context, userData }) => {
           )}
         </div>
 
-        <div className="flex justify-center mb-8 border-b border-slate-800 pb-8">
-          <button 
-            onClick={handleFetchAIStrategy} 
+        <div className="flex flex-col sm:flex-row justify-center gap-4 mb-8 border-b border-slate-800 pb-8">
+          <button
+            onClick={handleFetchAIStrategy}
             disabled={isFetching}
-            className="px-8 py-4 bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-400 hover:to-orange-500 text-white font-bold rounded-xl transition-all shadow-lg shadow-amber-500/25 flex items-center transform hover:-translate-y-1 active:scale-95 disabled:opacity-70 disabled:scale-100"
+            className="px-8 py-4 bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-400 hover:to-orange-500 text-white font-bold rounded-xl transition-all shadow-lg shadow-amber-500/25 flex items-center justify-center transform hover:-translate-y-1 active:scale-95 disabled:opacity-70 disabled:scale-100"
           >
             {isFetching ? (
-              <><div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin mr-3"></div> Analyzing Pattern...</>
+              <><div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin mr-3"></div> Generating AI Strategy...</>
             ) : (
               <><Zap className="w-5 h-5 mr-2" /> Generate Personalized AI Strategy</>
+            )}
+          </button>
+
+          <button
+            onClick={handleDownloadPDF}
+            disabled={isDownloading}
+            className="px-8 py-4 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-bold rounded-xl transition-all shadow-lg shadow-indigo-500/25 flex items-center justify-center transform hover:-translate-y-1 active:scale-95 disabled:opacity-70 disabled:scale-100"
+          >
+            {isDownloading ? (
+              <><div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin mr-3"></div> Building PDF...</>
+            ) : (
+              <><DownloadCloud className="w-5 h-5 mr-2" /> {aiStrategy ? 'Download Full Strategy PDF' : 'Download Default Strategy PDF'}</>
             )}
           </button>
         </div>
 
         {aiStrategy ? (
-          <MotionDiv animation="fade-in" className="bg-slate-950/50 border border-amber-500/30 rounded-2xl p-6 md:p-8">
-            <h3 className="text-xl font-bold text-amber-400 mb-4 flex items-center">
-              <Brain className="w-6 h-6 mr-2" /> Live Expert AI Advice
-            </h3>
+          <MotionDiv animation="fade-in" className="bg-slate-950/50 border border-amber-500/30 rounded-2xl p-6 md:p-8 mb-8">
+            <div className="flex flex-col sm:flex-row justify-between items-start gap-4 mb-4">
+              <h3 className="text-xl font-bold text-amber-400 flex items-center">
+                <Brain className="w-6 h-6 mr-2" /> Live Expert AI Strategy
+              </h3>
+              <button
+                onClick={handleDownloadPDF}
+                disabled={isDownloading}
+                className="text-xs font-bold px-4 py-2 bg-amber-500/10 text-amber-400 border border-amber-500/30 hover:bg-amber-500/20 rounded-lg flex items-center transition-colors"
+              >
+                <DownloadCloud className="w-3.5 h-3.5 mr-1.5" /> Save as PDF
+              </button>
+            </div>
             <div className="text-slate-300 leading-relaxed whitespace-pre-wrap text-sm">
               <MathFormatter text={String(aiStrategy)} />
             </div>
           </MotionDiv>
-        ) : (
-          <div className="space-y-6 relative">
-            <div className="absolute left-6 top-8 bottom-8 w-0.5 bg-slate-800 hidden md:block"></div>
-            {[
-              { title: "Phase 1: Concept Building & Foundation", icon: <BookOpen className="w-5 h-5" />, color: "text-blue-400", bg: "bg-blue-400/20", border: "border-blue-500/30", text: "Focus entirely on standard textbooks and high-quality video lectures. Do not rush to solve complex problems until the base concept is crystal clear. Make short notes specifically containing definitions, formulas, and edge cases." },
-              { title: "Phase 2: Targeted Practice & PYQs", icon: <History className="w-5 h-5" />, color: "text-emerald-400", bg: "bg-emerald-400/20", border: "border-emerald-500/30", text: `Solve the last 10 years of ${selectedExam} Previous Year Questions (PYQs). Analyze each question's explanation, even if your answer was correct. This reveals the examiner's mindset and helps identify the most frequently tested subtopics in ${selectedSub}.` },
-              { title: "Phase 3: Topic-wise Micro Tests", icon: <PenTool className="w-5 h-5" />, color: "text-purple-400", bg: "bg-purple-400/20", border: "border-purple-500/30", text: "Take short, topic-wise tests immediately after finishing a module. Use this phase to identify silly mistakes and time-consuming question traps. Strictly adhere to the negative marking scheme to build accuracy." },
-              { title: "Phase 4: Full-Length Simulation", icon: <Target className="w-5 h-5" />, color: "text-red-400", bg: "bg-red-400/20", border: "border-red-500/30", text: "During the final month, simulate the exact exam environment. For Mains/Descriptive: write full-length answers focusing on structure (Intro, Body, Conclusion). For Prelims/GATE: take 3-hour CBT mocks to perfect time management and pressure handling." }
-            ].map((phase, idx) => (
-              <MotionDiv key={idx} delay={idx * 100} animation="fade-up" className="relative z-10 flex flex-col md:flex-row items-start">
-                <div className={`w-12 h-12 rounded-xl flex items-center justify-center shrink-0 mb-4 md:mb-0 md:mr-6 ${phase.bg} ${phase.color} border ${phase.border} shadow-lg`}>
-                  {phase.icon}
-                </div>
-                <div className="bg-slate-950 border border-slate-800 rounded-2xl p-5 flex-1 hover:border-slate-600 transition-colors">
-                  <h3 className={`text-lg font-bold mb-2 ${phase.color}`}>{phase.title}</h3>
-                  <p className="text-slate-400 text-sm leading-relaxed">{phase.text}</p>
-                </div>
-              </MotionDiv>
-            ))}
+        ) : null}
+
+        {/* DEFAULT 4-PHASE STRATEGY CARDS */}
+        <div className="space-y-6 relative">
+          <div className="absolute left-6 top-8 bottom-8 w-0.5 bg-slate-800 hidden md:block"></div>
+          {[
+            { title: "Phase 1: Concept Building & Foundation", icon: <BookOpen className="w-5 h-5" />, color: "text-blue-400", bg: "bg-blue-400/20", border: "border-blue-500/30", text: "Focus entirely on standard textbooks and high-quality video lectures. Do not rush to solve complex problems until the base concept is crystal clear. Make short notes specifically containing definitions, formulas, and edge cases." },
+            { title: "Phase 2: Targeted Practice & PYQs", icon: <History className="w-5 h-5" />, color: "text-emerald-400", bg: "bg-emerald-400/20", border: "border-emerald-500/30", text: `Solve the last 10 years of ${selectedExam} Previous Year Questions (PYQs). Analyze each question's explanation, even if your answer was correct. This reveals the examiner's mindset and helps identify the most frequently tested subtopics in ${selectedSub}.` },
+            { title: "Phase 3: Topic-wise Micro Tests", icon: <PenTool className="w-5 h-5" />, color: "text-purple-400", bg: "bg-purple-400/20", border: "border-purple-500/30", text: "Take short, topic-wise tests immediately after finishing a module. Use this phase to identify silly mistakes and time-consuming question traps. Strictly adhere to the negative marking scheme to build accuracy." },
+            { title: "Phase 4: Full-Length Simulation", icon: <Target className="w-5 h-5" />, color: "text-red-400", bg: "bg-red-400/20", border: "border-red-500/30", text: "During the final month, simulate the exact exam environment. For Mains/Descriptive: write full-length answers focusing on structure (Intro, Body, Conclusion). For Prelims/GATE: take 3-hour CBT mocks to perfect time management and pressure handling." }
+          ].map((phase, idx) => (
+            <MotionDiv key={idx} delay={idx * 100} animation="fade-up" className="relative z-10 flex flex-col md:flex-row items-start">
+              <div className={`w-12 h-12 rounded-xl flex items-center justify-center shrink-0 mb-4 md:mb-0 md:mr-6 ${phase.bg} ${phase.color} border ${phase.border} shadow-lg`}>
+                {phase.icon}
+              </div>
+              <div className="bg-slate-950 border border-slate-800 rounded-2xl p-5 flex-1 hover:border-slate-600 transition-colors">
+                <h3 className={`text-lg font-bold mb-2 ${phase.color}`}>{phase.title}</h3>
+                <p className="text-slate-400 text-sm leading-relaxed">{phase.text}</p>
+              </div>
+            </MotionDiv>
+          ))}
+        </div>
+
+        {/* OFFLINE TIP BANNER */}
+        <div className="mt-8 p-4 bg-indigo-500/10 border border-indigo-500/30 rounded-xl flex items-start gap-3">
+          <DownloadCloud className="w-5 h-5 text-indigo-400 shrink-0 mt-0.5" />
+          <div>
+            <p className="text-sm font-bold text-indigo-300 mb-1">Offline Access Tip</p>
+            <p className="text-xs text-slate-400 leading-relaxed">
+              Click <span className="text-indigo-400 font-bold">"Download Strategy PDF"</span> to save a beautifully formatted practice strategy to your device. The PDF includes all 4 phases, syllabus weightage table, daily schedule template, and your AI-generated advice — perfect for offline reference.
+            </p>
           </div>
-        )}
+        </div>
       </MotionDiv>
     </div>
   );
@@ -2119,20 +2504,17 @@ const ActiveTestScreen = ({ navigate, context, onTestComplete }) => {
   const initialTime = safeContext.testType === 'Full Syllabus' ? testMeta.mins * 60 : (testMeta.mins / 2) * 60;
   const [timeLeft, setTimeLeft] = useState(initialTime);
 
+  // --- FINAL FIREBASE GAMIFICATION LOGIC (ENGLISH VERSION) ---
+  // Normal Test Timer Logic
   useEffect(() => {
-    const timer = setInterval(() => {
-      setTimeLeft(prev => {
-        if (prev <= 1) {
-          clearInterval(timer);
-          submitTest();
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
-    return () => clearInterval(timer);
-  }, []);
-
+    let interval = null;
+    if (timeLeft > 0) {
+      interval = setInterval(() => setTimeLeft(t => t - 1), 1000);
+    } else {
+      submitTest();
+    }
+    return () => clearInterval(interval);
+  }, [timeLeft]);
   const formatTime = (seconds) => {
     const h = Math.floor(seconds / 3600);
     const m = Math.floor((seconds % 3600) / 60);
