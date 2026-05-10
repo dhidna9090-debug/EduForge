@@ -812,133 +812,612 @@ const generateQuestions = (exam, sub, testType = 'Full Syllabus', topicIndex = 0
   return questions;
 };
 
+// ============================================================
+// IMPROVED getRoadmapForExam — REAL & STRUCTURED ROADMAPS
+// Paste this ENTIRE function in your App.jsx, replacing
+// the existing getRoadmapForExam function.
+// ============================================================
+
 const getRoadmapForExam = (exam, sub, calculatedDailyHoursStr, startDateStr, examDateStr, planMode = 'standard', diagnosticData = null) => {
   const safeExam = exam || 'GATE';
   const safeSub = sub || 'Computer Science (CS)';
-  const fullSyllabus = SYLLABUS_DATA[safeExam]?.[safeSub] || SYLLABUS_DATA['GATE']['Computer Science (CS)'];
-  
-  const isVVI = planMode === 'vvi_30_days';
-  
-  // Deep copy to prevent mutating the original database
-  let syllabus = fullSyllabus.map(item => ({...item}));
+  const dailyHours = parseFloat(calculatedDailyHoursStr) || 4;
 
-  if (isVVI) {
-    // --- BRAND NEW 30-DAY VVI CRASH COURSE PLANNER ---
-    // Sort strictly by highest weightage to ensure maximum output.
-    syllabus.sort((a, b) => (b.weight || 0) - (a.weight || 0));
+  const start = new Date(startDateStr || new Date());
+  const end   = new Date(examDateStr   || new Date(Date.now() + 180 * 24 * 60 * 60 * 1000));
+  const totalDays = Math.max(1, Math.ceil((end - start) / (1000 * 60 * 60 * 24)));
 
-    // Extract only the top 3 "Easy & High Yield" important topics
-    const topTopics = syllabus.slice(0, 3);
-    
-    const vviPhases = [
+  const fmtDate = (d) => d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  const addDays  = (base, n) => new Date(base.getTime() + n * 86400000);
+  const phaseEnd = (base, pct) => addDays(base, Math.max(1, Math.round(totalDays * pct)));
+
+  // ─── 30-DAY VVI CRASH COURSE ──────────────────────────────
+  if (planMode === 'vvi_30_days') {
+    const fullSyllabus = SYLLABUS_DATA[safeExam]?.[safeSub] || [];
+    const sorted = [...fullSyllabus].sort((a, b) => (b.weight || 0) - (a.weight || 0));
+    const top3 = sorted.slice(0, 3);
+
+    return [
       {
         id: 'vvi_phase_1',
-        week: 'Days 1-10',
-        title: `Phase 1: High-Yield Essentials (${topTopics[0]?.section || 'Core Fundamentals'})`,
-        weight: topTopics[0]?.weight,
-        diagnosticScore: diagnosticData ? diagnosticData[topTopics[0]?.section] : 'N/A',
-        dateRange: 'First 10 Days',
+        week: 'Days 1–10',
+        title: `Phase 1 — High-Yield Blitz: ${top3[0]?.section || 'Core Fundamentals'}`,
+        weight: top3[0]?.weight,
+        diagnosticScore: diagnosticData?.[top3[0]?.section],
+        dateRange: `${fmtDate(start)} to ${fmtDate(addDays(start, 10))}`,
         tasks: [
-          { id: 'vvi_1_t1', type: "video", title: `One-Shot Masterclass: ${topTopics[0]?.section || 'Core Topic'}`, duration: "15 hrs", iconType: "video", color: "text-red-400", bg: "bg-red-400/10", border: "border-red-500/30", xp: "+150 XP", isComingSoon: true },
-          { id: 'vvi_1_t2', type: "practice", title: `Solve Top 100 Most Repeated PYQs`, duration: "10 hrs", iconType: "practice", color: "text-emerald-400", bg: "bg-emerald-400/10", border: "border-emerald-500/30", xp: "+120 XP" }
+          {
+            id: 'vvi_1_t1', type: 'video',
+            title: `One-Shot Masterclass: ${top3[0]?.section || 'Core Topic'} (Full Revision)`,
+            duration: '12–15 hrs', iconType: 'video',
+            color: 'text-red-400', bg: 'bg-red-400/10', border: 'border-red-500/30',
+            xp: '+180 XP', isComingSoon: true
+          },
+          {
+            id: 'vvi_1_t2', type: 'practice',
+            title: `Top 100 PYQs: ${top3[0]?.section || 'Core Topic'} (Last 15 Years)`,
+            duration: '10 hrs', iconType: 'practice',
+            color: 'text-emerald-400', bg: 'bg-emerald-400/10', border: 'border-emerald-500/30',
+            xp: '+150 XP'
+          },
+          {
+            id: 'vvi_1_t3', type: 'read',
+            title: `Cheat Sheet: Formulas, Theorems & Definitions for ${top3[0]?.section || 'Core Topic'}`,
+            duration: '3 hrs', iconType: 'read',
+            color: 'text-amber-400', bg: 'bg-amber-400/10', border: 'border-amber-500/30',
+            xp: '+60 XP',
+            url: `https://www.google.com/search?q=${encodeURIComponent(safeExam + ' ' + (top3[0]?.section || '') + ' short notes cheat sheet pdf')}`
+          }
         ]
       },
       {
         id: 'vvi_phase_2',
-        week: 'Days 11-20',
-        title: `Phase 2: Easy Scoring Master (${topTopics[1]?.section || 'Secondary'} & ${topTopics[2]?.section || 'Tertiary'})`,
-        dateRange: 'Next 10 Days',
+        week: 'Days 11–20',
+        title: `Phase 2 — Easy Scoring: ${top3[1]?.section || 'Secondary'} & ${top3[2]?.section || 'Tertiary'}`,
+        dateRange: `${fmtDate(addDays(start, 11))} to ${fmtDate(addDays(start, 20))}`,
         tasks: [
-          { id: 'vvi_2_t1', type: "read", title: `Memorize Cheat Sheets & Factoids`, duration: "8 hrs", iconType: "read", color: "text-amber-400", bg: "bg-amber-400/10", border: "border-amber-500/30", xp: "+80 XP", url: `https://www.google.com/search?q=${encodeURIComponent(safeExam + " " + safeSub + " short notes cheat sheet pdf")}` },
-          { id: 'vvi_2_t2', type: "practice", title: `Topic-Wise Mini Mocks for Accuracy`, duration: "12 hrs", iconType: "target", color: "text-blue-400", bg: "bg-blue-400/10", border: "border-blue-500/30", xp: "+100 XP" }
+          {
+            id: 'vvi_2_t1', type: 'read',
+            title: `Summarized Notes: ${top3[1]?.section || 'Topic 2'} — Focus on Definitions & Key Theorems`,
+            duration: '8 hrs', iconType: 'read',
+            color: 'text-amber-400', bg: 'bg-amber-400/10', border: 'border-amber-500/30',
+            xp: '+80 XP',
+            url: `https://www.google.com/search?q=${encodeURIComponent(safeExam + ' ' + (top3[1]?.section || '') + ' PYQ notes pdf')}`
+          },
+          {
+            id: 'vvi_2_t2', type: 'practice',
+            title: `Topic-Wise Mini Mock: ${top3[1]?.section || 'Topic 2'} + ${top3[2]?.section || 'Topic 3'}`,
+            duration: '10 hrs', iconType: 'target',
+            color: 'text-blue-400', bg: 'bg-blue-400/10', border: 'border-blue-500/30',
+            xp: '+120 XP'
+          },
+          {
+            id: 'vvi_2_t3', type: 'read',
+            title: `Error Log Review — Note Every Wrong Answer with Root Cause`,
+            duration: '4 hrs', iconType: 'read',
+            color: 'text-purple-400', bg: 'bg-purple-400/10', border: 'border-purple-500/30',
+            xp: '+50 XP'
+          }
         ]
       },
       {
         id: 'vvi_phase_3',
-        week: 'Days 21-30',
-        title: `Phase 3: Final Polish & Mega Mocks`,
-        dateRange: 'Final 10 Days',
+        week: 'Days 21–30',
+        title: 'Phase 3 — Final Polish, Mega Mocks & Exam-Day Simulation',
+        dateRange: `${fmtDate(addDays(start, 21))} to ${fmtDate(addDays(start, 30))}`,
         tasks: [
-          { id: 'vvi_3_t1', type: "read", title: "Review Mistake Book (Eliminate Silly Errors)", duration: "5 hrs", iconType: "read", color: "text-purple-400", bg: "bg-purple-400/10", border: "border-purple-500/30", xp: "+50 XP" },
-          { id: 'vvi_3_t2', type: "target", title: "Attempt 5 Full-Length Real-Time Mocks", duration: "15 hrs", iconType: "target", color: "text-red-400", bg: "bg-red-400/10", border: "border-red-500/30", xp: "+200 XP" }
+          {
+            id: 'vvi_3_t1', type: 'practice',
+            title: '5 Full-Length Mocks in Real-Time CBT Conditions (Timed, No Breaks)',
+            duration: '15 hrs', iconType: 'target',
+            color: 'text-red-400', bg: 'bg-red-400/10', border: 'border-red-500/30',
+            xp: '+200 XP'
+          },
+          {
+            id: 'vvi_3_t2', type: 'read',
+            title: 'Revise Error Log + Highest-Mistake Topics Only (Smart Revision)',
+            duration: '6 hrs', iconType: 'read',
+            color: 'text-purple-400', bg: 'bg-purple-400/10', border: 'border-purple-500/30',
+            xp: '+60 XP'
+          },
+          {
+            id: 'vvi_3_t3', type: 'read',
+            title: 'Final 48-Hour Formula Sheet + Key Facts Memorization',
+            duration: '3 hrs', iconType: 'read',
+            color: 'text-amber-400', bg: 'bg-amber-400/10', border: 'border-amber-500/30',
+            xp: '+40 XP'
+          }
         ]
       }
     ];
-    
-    return vviPhases;
   }
 
-  // --- STANDARD ROADMAP LOGIC (For 6+ Months Prep) ---
-  const start = new Date(startDateStr || new Date());
-  const end = new Date(examDateStr || new Date(Date.now() + 180 * 24 * 60 * 60 * 1000));
-  const totalDays = Math.max(1, Math.ceil((end - start) / (1000 * 60 * 60 * 24)));
-  
-  const dailyHours = parseFloat(calculatedDailyHoursStr) || 4;
-  const totalAvailableHours = totalDays * dailyHours;
-
-  const syllabusDays = Math.floor(totalDays * 0.8);
-  const revisionDays = Math.floor(totalDays * 0.1);
-  
-  const numSections = syllabus.length || 1;
-  const totalMultiplier = syllabus.reduce((sum, item) => sum + (item.timeMultiplier || 1), 0);
-
-  let currentStartDate = new Date(start);
-
-  let phases = syllabus.map((item, idx) => {
-    const daysForThisSection = syllabusDays / numSections;
-    const hoursForThisSection = (totalAvailableHours * 0.8) / numSections;
-
-    const phaseStart = new Date(currentStartDate);
-    const phaseEnd = new Date(currentStartDate.getTime() + Math.max(1, daysForThisSection) * 24 * 60 * 60 * 1000);
-    currentStartDate = new Date(phaseEnd);
-
-    const formatDt = (d) => d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-    
-    const phaseTitle = String(item.section);
-
-    let phaseTasks = [];
-    if (safeExam === 'GATE') {
-      phaseTasks = [
-        { id: `phase_${idx}_t1`, type: "video", title: `Core Video: ${item.section}`, duration: `${(hoursForThisSection * 0.3).toFixed(1)} hrs`, iconType: "video", color: "text-blue-400", bg: "bg-blue-400/10", border: "border-blue-500/30", xp: `+${Math.round(hoursForThisSection * 10)} XP`, isComingSoon: true },
-        { id: `phase_${idx}_t2`, type: "video", title: `High-Yield NPTEL: ${item.section}`, duration: `${(hoursForThisSection * 0.3).toFixed(1)} hrs`, iconType: "video", color: "text-indigo-400", bg: "bg-indigo-400/10", border: "border-indigo-500/30", xp: `+${Math.round(hoursForThisSection * 10)} XP`, isComingSoon: true },
-        { id: `phase_${idx}_t3`, type: "read", title: `Quick Notes: ${item.book || "Standard Text"}`, duration: `${(hoursForThisSection * 0.2).toFixed(1)} hrs`, iconType: "read", color: "text-amber-400", bg: "bg-amber-400/10", border: "border-amber-500/30", xp: `+${Math.round(hoursForThisSection * 8)} XP`, url: `https://www.google.com/search?q=${encodeURIComponent(item.book || "Standard Text")}` },
-        { id: `phase_${idx}_t4`, type: "practice", title: `Most Expected PYQs`, duration: `${(hoursForThisSection * 0.2).toFixed(1)} hrs`, iconType: "practice", color: "text-emerald-400", bg: "bg-emerald-400/10", border: "border-emerald-500/30", xp: `+${Math.round(hoursForThisSection * 12)} XP` }
-      ];
-    } else {
-      phaseTasks = [
-        { id: `phase_${idx}_t1`, type: "video", title: `Masterclass: ${String(item.section)}`, duration: `${(hoursForThisSection * 0.4).toFixed(1)} hrs`, iconType: "video", color: "text-blue-400", bg: "bg-blue-400/10", border: "border-blue-500/30", xp: `+${Math.round(hoursForThisSection * 10)} XP`, isComingSoon: true },
-        { id: `phase_${idx}_t2`, type: "read", title: `VVI Summary: ${String(item.wikiKey || item.section)}`, duration: `${(hoursForThisSection * 0.3).toFixed(1)} hrs`, iconType: "read", color: "text-amber-400", bg: "bg-amber-400/10", border: "border-amber-500/30", xp: `+${Math.round(hoursForThisSection * 8)} XP`, url: `https://en.wikipedia.org/wiki/Special:Search?search=${encodeURIComponent(item.wikiKey || item.section)}` },
-        { id: `phase_${idx}_t3`, type: "practice", title: `Top 50 PYQs: ${String(item.section)}`, duration: `${(hoursForThisSection * 0.3).toFixed(1)} hrs`, iconType: "practice", color: "text-emerald-400", bg: "bg-emerald-400/10", border: "border-emerald-500/30", xp: `+${Math.round(hoursForThisSection * 12)} XP` }
-      ];
-    }
-
-    return {
-      id: `phase_${idx}`,
-      week: `Phase ${idx + 1}`,
-      title: phaseTitle,
-      weight: item.weight,
-      diagnosticScore: item.diagnosticScore,
-      dateRange: `${formatDt(phaseStart)} to ${formatDt(phaseEnd)}`,
-      tasks: phaseTasks
-    };
+  // ─── STANDARD ROADMAP — BUILD REAL PHASES ─────────────────
+  // Helper: build one roadmap phase
+  const buildPhase = (id, weekLabel, title, dateRange, tasksArr) => ({
+    id, week: weekLabel, title, dateRange, tasks: tasksArr
   });
 
-  const revStart = new Date(currentStartDate);
-  const revEnd = new Date(currentStartDate.getTime() + revisionDays * 24 * 60 * 60 * 1000);
-  currentStartDate = new Date(revEnd);
-  
-  phases.push({
-    id: 'consolidation',
-    week: "Consolidation",
-    title: "Complete Syllabus Revision",
-    dateRange: `${revStart.toLocaleDateString('en-US', {month:'short', day:'numeric'})} to ${revEnd.toLocaleDateString('en-US', {month:'short', day:'numeric'})}`,
-    tasks: [
-      { id: 'cons_t1', type: "read", title: "Revise Formula Book & High-Yield Facts", duration: `${(totalAvailableHours * 0.1 * 0.6).toFixed(1)} hrs`, iconType: "read", color: "text-purple-400", bg: "bg-purple-400/10", border: "border-purple-500/30", xp: `+${Math.round((totalAvailableHours * 0.1)*10)} XP` },
-      { id: 'cons_t2', type: "practice", title: "Attempt Topic-Wise Mock Tests", duration: `${(totalAvailableHours * 0.1 * 0.4).toFixed(1)} hrs`, iconType: "practice", color: "text-emerald-400", bg: "bg-emerald-400/10", border: "border-emerald-500/30", xp: `+${Math.round((totalAvailableHours * 0.1)*8)} XP` }
-    ]
+  const makeTask = (id, type, title, duration, color, bg, border, xp, url, isComingSoon) => ({
+    id, type, title, duration, iconType: type,
+    color, bg, border, xp,
+    ...(url ? { url } : {}),
+    ...(isComingSoon ? { isComingSoon: true } : {})
   });
 
-  return phases;
+  // ══════════════════════════════════════════════════════════
+  //  GATE — Computer Science (CS)
+  // ══════════════════════════════════════════════════════════
+  if (safeExam === 'GATE' && safeSub === 'Computer Science (CS)') {
+    const p1End = phaseEnd(start, 0.15);
+    const p2End = phaseEnd(p1End, 0.20);
+    const p3End = phaseEnd(p2End, 0.20);
+    const p4End = phaseEnd(p3End, 0.18);
+    const p5End = phaseEnd(p4End, 0.14);
+    const p6End = phaseEnd(p5End, 0.08);
+
+    return [
+      buildPhase('gate_cs_1', 'Phase 1', 'Engineering Mathematics & Digital Logic (15% + 6%)',
+        `${fmtDate(start)} → ${fmtDate(p1End)}`, [
+          makeTask('g1t1','video','NPTEL Discrete Mathematics — Sets, Logic, Graph Theory, Combinatorics',`${Math.round(dailyHours*0.35*Math.round(totalDays*0.15))} hrs`,'text-blue-400','bg-blue-400/10','border-blue-500/30','+120 XP','https://nptel.ac.in/courses/106106094',true),
+          makeTask('g1t2','read','Kenneth Rosen: Discrete Math — Chapters 1–9 (Self-Study)',`${Math.round(dailyHours*0.25*Math.round(totalDays*0.15))} hrs`,'text-amber-400','bg-amber-400/10','border-amber-500/30','+80 XP','https://www.google.com/search?q=Kenneth+Rosen+Discrete+Mathematics+pdf'),
+          makeTask('g1t3','video','Digital Logic: Boolean Algebra, K-Maps, Flip-Flops — Neso Academy Playlist',`${Math.round(dailyHours*0.25*Math.round(totalDays*0.15))} hrs`,'text-indigo-400','bg-indigo-400/10','border-indigo-500/30','+80 XP','https://www.youtube.com/results?search_query=Neso+Academy+Digital+Logic+GATE',true),
+          makeTask('g1t4','practice','GATE PYQ: Maths + Digital Logic (2010–2024) on GateOverflow',`${Math.round(dailyHours*0.15*Math.round(totalDays*0.15))} hrs`,'text-emerald-400','bg-emerald-400/10','border-emerald-500/30','+100 XP','https://gateoverflow.in/tag/engineering-mathematics')
+        ]),
+
+      buildPhase('gate_cs_2', 'Phase 2', 'Data Structures & Algorithms (22% combined — Highest Weight)',
+        `${fmtDate(p1End)} → ${fmtDate(p2End)}`, [
+          makeTask('g2t1','video','CLRS-based DS+Algo: Arrays, LL, Trees, Graphs, Sorting — NPTEL or Abdul Bari',`${Math.round(dailyHours*0.35*Math.round(totalDays*0.20))} hrs`,'text-blue-400','bg-blue-400/10','border-blue-500/30','+140 XP','https://www.youtube.com/results?search_query=Abdul+Bari+Algorithms+GATE',true),
+          makeTask('g2t2','read','CLRS Textbook: Chapters 1–10, 22–25 (Algo), Reema Thareja (DS)',`${Math.round(dailyHours*0.25*Math.round(totalDays*0.20))} hrs`,'text-amber-400','bg-amber-400/10','border-amber-500/30','+90 XP','https://www.google.com/search?q=CLRS+Introduction+to+Algorithms+pdf'),
+          makeTask('g2t3','practice','Topic-Wise PYQs: DS + Algo from GateOverflow (Chapter-Wise, not Year-Wise)',`${Math.round(dailyHours*0.30*Math.round(totalDays*0.20))} hrs`,'text-emerald-400','bg-emerald-400/10','border-emerald-500/30','+120 XP','https://gateoverflow.in/tag/data-structures'),
+          makeTask('g2t4','practice','Hand-Trace Practice: 30 Recursion Problems + 20 DP Problems on Paper',`${Math.round(dailyHours*0.10*Math.round(totalDays*0.20))} hrs`,'text-purple-400','bg-purple-400/10','border-purple-500/30','+80 XP')
+        ]),
+
+      buildPhase('gate_cs_3', 'Phase 3', 'Operating Systems, DBMS & Computer Networks (10% + 8% + 9%)',
+        `${fmtDate(p2End)} → ${fmtDate(p3End)}`, [
+          makeTask('g3t1','video','OS: Galvin Textbook + Neso Academy OS Playlist (Processes, Memory, Scheduling)',`${Math.round(dailyHours*0.30*Math.round(totalDays*0.20))} hrs`,'text-blue-400','bg-blue-400/10','border-blue-500/30','+110 XP','https://www.youtube.com/results?search_query=Neso+Academy+Operating+System',true),
+          makeTask('g3t2','video','DBMS: ER Model, Relational Algebra, SQL, Normalization, B-Trees — Neso Academy',`${Math.round(dailyHours*0.25*Math.round(totalDays*0.20))} hrs`,'text-indigo-400','bg-indigo-400/10','border-indigo-500/30','+90 XP','https://www.youtube.com/results?search_query=Neso+Academy+DBMS+GATE',true),
+          makeTask('g3t3','video','CN: OSI/TCP-IP, Routing (OSPF, BGP), TCP vs UDP, Congestion Control — Ravindrababu Ravula',`${Math.round(dailyHours*0.25*Math.round(totalDays*0.20))} hrs`,'text-teal-400','bg-teal-400/10','border-teal-500/30','+90 XP','https://www.youtube.com/results?search_query=Ravindrababu+Ravula+Computer+Networks+GATE',true),
+          makeTask('g3t4','practice','PYQs: OS + DBMS + CN on GateOverflow — Flag every trap question',`${Math.round(dailyHours*0.20*Math.round(totalDays*0.20))} hrs`,'text-emerald-400','bg-emerald-400/10','border-emerald-500/30','+110 XP','https://gateoverflow.in/tag/operating-system')
+        ]),
+
+      buildPhase('gate_cs_4', 'Phase 4', 'Theory of Computation, Compiler Design & COA (8% + 4% + 8%)',
+        `${fmtDate(p3End)} → ${fmtDate(p4End)}`, [
+          makeTask('g4t1','video','TOC: DFA, NFA, CFG, PDA, Turing Machines — Ravindrababu Ravula',`${Math.round(dailyHours*0.35*Math.round(totalDays*0.18))} hrs`,'text-blue-400','bg-blue-400/10','border-blue-500/30','+100 XP','https://www.youtube.com/results?search_query=Ravindrababu+Ravula+TOC+GATE',true),
+          makeTask('g4t2','video','Compiler Design: Lexical, Parsing (LL, LR), SDT — Ravindrababu Ravula / Neso',`${Math.round(dailyHours*0.20*Math.round(totalDays*0.18))} hrs`,'text-purple-400','bg-purple-400/10','border-purple-500/30','+70 XP','https://www.youtube.com/results?search_query=GATE+Compiler+Design+lectures',true),
+          makeTask('g4t3','video','COA: ALU, Pipelining, Cache Mapping, Virtual Memory — Carl Hamacher / NPTEL',`${Math.round(dailyHours*0.25*Math.round(totalDays*0.18))} hrs`,'text-indigo-400','bg-indigo-400/10','border-indigo-500/30','+90 XP','https://nptel.ac.in/courses/106103068',true),
+          makeTask('g4t4','practice','PYQ Sprint: TOC + Compiler + COA (Last 10 Years, Chapter-Wise)',`${Math.round(dailyHours*0.20*Math.round(totalDays*0.18))} hrs`,'text-emerald-400','bg-emerald-400/10','border-emerald-500/30','+100 XP','https://gateoverflow.in/tag/theory-of-computation')
+        ]),
+
+      buildPhase('gate_cs_5', 'Phase 5', 'Full Syllabus PYQ Marathon + General Aptitude Mastery',
+        `${fmtDate(p4End)} → ${fmtDate(p5End)}`, [
+          makeTask('g5t1','practice','Solve ALL GATE CS Papers 2010–2024 in Strict 3-Hour Timed Sessions',`${Math.round(dailyHours*0.50*Math.round(totalDays*0.14))} hrs`,'text-emerald-400','bg-emerald-400/10','border-emerald-500/30','+200 XP','https://gateoverflow.in/'),
+          makeTask('g5t2','practice','General Aptitude Sprint: 200 Verbal + 200 Quant Questions from GO Book',`${Math.round(dailyHours*0.25*Math.round(totalDays*0.14))} hrs`,'text-blue-400','bg-blue-400/10','border-blue-500/30','+80 XP','https://www.google.com/search?q=GATE+General+Aptitude+previous+year+questions+pdf'),
+          makeTask('g5t3','read','Build Subject-Wise Formula Sheets (One A4 Page Per Subject) + Error Log',`${Math.round(dailyHours*0.25*Math.round(totalDays*0.14))} hrs`,'text-amber-400','bg-amber-400/10','border-amber-500/30','+60 XP')
+        ]),
+
+      buildPhase('gate_cs_6', 'Phase 6', 'CBT Mock Tests, Virtual Calculator & Final Exam Strategy',
+        `${fmtDate(p5End)} → ${fmtDate(p6End)}`, [
+          makeTask('g6t1','target','12 Full-Length CBT Mocks — TestBook / MADE Easy / GATE Academy (Strict 3-hr)',`${Math.round(dailyHours*0.55*Math.round(totalDays*0.08))} hrs`,'text-red-400','bg-red-400/10','border-red-500/30','+250 XP','https://testbook.com/gate-computer-science-test-series'),
+          makeTask('g6t2','practice','Virtual Calculator Drills: 50 NAT Questions per Subject (No Negative Marking!)',`${Math.round(dailyHours*0.25*Math.round(totalDays*0.08))} hrs`,'text-emerald-400','bg-emerald-400/10','border-emerald-500/30','+80 XP','https://gate2024.iisc.ac.in/'),
+          makeTask('g6t3','read','Final Revision: Error Log + Formula Sheets Only. No New Topics After This Point.',`${Math.round(dailyHours*0.20*Math.round(totalDays*0.08))} hrs`,'text-amber-400','bg-amber-400/10','border-amber-500/30','+40 XP')
+        ])
+    ];
+  }
+
+  // ══════════════════════════════════════════════════════════
+  //  GATE — Electronics & Communication (EC)
+  // ══════════════════════════════════════════════════════════
+  if (safeExam === 'GATE' && safeSub === 'Electronics & Communication (EC)') {
+    const p1End = phaseEnd(start, 0.18);
+    const p2End = phaseEnd(p1End, 0.20);
+    const p3End = phaseEnd(p2End, 0.20);
+    const p4End = phaseEnd(p3End, 0.18);
+    const p5End = phaseEnd(p4End, 0.16);
+
+    return [
+      buildPhase('gate_ec_1','Phase 1','Engineering Mathematics + Signals & Systems (15% + 10%)',
+        `${fmtDate(start)} → ${fmtDate(p1End)}`,[
+          makeTask('ec1t1','video','NPTEL: Transform Techniques (Laplace, Fourier, Z-Transform) — Prof. S.C. Dey',`${Math.round(dailyHours*0.4*Math.round(totalDays*0.18))} hrs`,'text-blue-400','bg-blue-400/10','border-blue-500/30','+120 XP','https://nptel.ac.in',true),
+          makeTask('ec1t2','practice','Signals PYQs 2010–2024: LTI Systems, Sampling Theorem, DTFT — GateOverflow',`${Math.round(dailyHours*0.3*Math.round(totalDays*0.18))} hrs`,'text-emerald-400','bg-emerald-400/10','border-emerald-500/30','+100 XP','https://gateoverflow.in/tag/signals-and-systems'),
+          makeTask('ec1t3','read','Build Formula Sheet: All Transform Pairs + Key Properties on One A4 Sheet',`${Math.round(dailyHours*0.3*Math.round(totalDays*0.18))} hrs`,'text-amber-400','bg-amber-400/10','border-amber-500/30','+60 XP')
+        ]),
+
+      buildPhase('gate_ec_2','Phase 2','Electronic Devices + Analog Circuits + Digital Circuits (15%+10%+10%)',
+        `${fmtDate(p1End)} → ${fmtDate(p2End)}`,[
+          makeTask('ec2t1','video','Devices: p-n Junction, MOSFET, BJT I-V Characteristics — Sedra/Smith based NPTEL',`${Math.round(dailyHours*0.35*Math.round(totalDays*0.20))} hrs`,'text-blue-400','bg-blue-400/10','border-blue-500/30','+110 XP','https://nptel.ac.in',true),
+          makeTask('ec2t2','video','Analog: Op-Amp Circuits, Feedback, Oscillators (Barkhausen Criterion) — Neso',`${Math.round(dailyHours*0.30*Math.round(totalDays*0.20))} hrs`,'text-indigo-400','bg-indigo-400/10','border-indigo-500/30','+90 XP','https://www.youtube.com/results?search_query=Neso+Academy+Analog+Circuits+GATE',true),
+          makeTask('ec2t3','practice','NAT Practice: Device Equations + Op-Amp Numericals (No Negative Marking — Always Attempt)',`${Math.round(dailyHours*0.35*Math.round(totalDays*0.20))} hrs`,'text-emerald-400','bg-emerald-400/10','border-emerald-500/30','+120 XP')
+        ]),
+
+      buildPhase('gate_ec_3','Phase 3','Control Systems + Communications + Electromagnetics (10%+15%+10%)',
+        `${fmtDate(p2End)} → ${fmtDate(p3End)}`,[
+          makeTask('ec3t1','video','Control: Bode Plot, Nyquist, Root Locus — Practice Graphical Problems on Paper',`${Math.round(dailyHours*0.30*Math.round(totalDays*0.20))} hrs`,'text-blue-400','bg-blue-400/10','border-blue-500/30','+100 XP','https://nptel.ac.in',true),
+          makeTask('ec3t2','video','Comms: AM/FM/PM Modulation, SNR, Digital Modulation (BPSK, QPSK, QAM) — NPTEL',`${Math.round(dailyHours*0.35*Math.round(totalDays*0.20))} hrs`,'text-purple-400','bg-purple-400/10','border-purple-500/30','+110 XP','https://nptel.ac.in',true),
+          makeTask('ec3t3','practice','EM PYQs: Maxwell Equations, Transmission Lines, Waveguides — Smith Chart Problems',`${Math.round(dailyHours*0.35*Math.round(totalDays*0.20))} hrs`,'text-emerald-400','bg-emerald-400/10','border-emerald-500/30','+110 XP','https://gateoverflow.in/tag/electromagnetics')
+        ]),
+
+      buildPhase('gate_ec_4','Phase 4','Networks + General Aptitude + PYQ Full Marathon',
+        `${fmtDate(p3End)} → ${fmtDate(p4End)}`,[
+          makeTask('ec4t1','practice','Networks: KVL/KCL, Thevenin/Norton, Two-Port Parameters — All GATE PYQs 2005+',`${Math.round(dailyHours*0.35*Math.round(totalDays*0.18))} hrs`,'text-emerald-400','bg-emerald-400/10','border-emerald-500/30','+100 XP','https://gateoverflow.in/tag/network-theory'),
+          makeTask('ec4t2','practice','GA Sprint: 200 Verbal + 150 Quant Questions. Target 13+/15 in Exam.',`${Math.round(dailyHours*0.25*Math.round(totalDays*0.18))} hrs`,'text-blue-400','bg-blue-400/10','border-blue-500/30','+80 XP'),
+          makeTask('ec4t3','read','Formula Sheets: 1 page per subject (Controls, Comms, Devices). Memorize thoroughly.',`${Math.round(dailyHours*0.20*Math.round(totalDays*0.18))} hrs`,'text-amber-400','bg-amber-400/10','border-amber-500/30','+60 XP')
+        ]),
+
+      buildPhase('gate_ec_5','Phase 5','10 Full CBT Mocks + Virtual Calculator + Weak Area Elimination',
+        `${fmtDate(p4End)} → ${fmtDate(p5End)}`,[
+          makeTask('ec5t1','target','10 Full-Length EC Mocks — MADE Easy / TestBook (Strict 3-hr, Virtual Calculator)',`${Math.round(dailyHours*0.60*Math.round(totalDays*0.16))} hrs`,'text-red-400','bg-red-400/10','border-red-500/30','+250 XP','https://testbook.com/gate-electronics-test-series'),
+          makeTask('ec5t2','read','Exam Strategy: GA First (25 min) → 1-mark Qs (45 min) → 2-mark Qs (90 min) → Review (15 min)',`${Math.round(dailyHours*0.20*Math.round(totalDays*0.16))} hrs`,'text-indigo-400','bg-indigo-400/10','border-indigo-500/30','+40 XP'),
+          makeTask('ec5t3','read','Final Revision: Error Log + Formula Sheets Only. Stop new content 3 days before exam.',`${Math.round(dailyHours*0.20*Math.round(totalDays*0.16))} hrs`,'text-amber-400','bg-amber-400/10','border-amber-500/30','+40 XP')
+        ])
+    ];
+  }
+
+  // ══════════════════════════════════════════════════════════
+  //  UPSC CSE — Prelims (GS)
+  // ══════════════════════════════════════════════════════════
+  if (safeExam === 'UPSC CSE' && safeSub === 'Prelims (GS)') {
+    const p1End = phaseEnd(start, 0.28);
+    const p2End = phaseEnd(p1End, 0.25);
+    const p3End = phaseEnd(p2End, 0.25);
+    const p4End = phaseEnd(p3End, 0.22);
+
+    return [
+      buildPhase('upsc_pre_1','Phase 1','NCERT Foundation — All 6th–12th Relevant Books (History, Geography, Polity, Science)',
+        `${fmtDate(start)} → ${fmtDate(p1End)}`,[
+          makeTask('up1t1','read','Read ALL NCERTs: History (6–12), Geography (6–12), Polity (6–12), Economy (9–12), Science (6–10)',`${Math.round(dailyHours*0.55*Math.round(totalDays*0.28))} hrs`,'text-amber-400','bg-amber-400/10','border-amber-500/30','+160 XP','https://ncert.nic.in/textbook.php'),
+          makeTask('up1t2','read','Upgrade to Laxmikanth (Polity), GC Leong (Geography), Shankar IAS (Environment)',`${Math.round(dailyHours*0.30*Math.round(totalDays*0.28))} hrs`,'text-blue-400','bg-blue-400/10','border-blue-500/30','+120 XP','https://www.google.com/search?q=Laxmikanth+Polity+book+pdf'),
+          makeTask('up1t3','practice','Build Topic-Wise Flashcards after each NCERT chapter. Review every 3 days.',`${Math.round(dailyHours*0.15*Math.round(totalDays*0.28))} hrs`,'text-emerald-400','bg-emerald-400/10','border-emerald-500/30','+80 XP')
+        ]),
+
+      buildPhase('upsc_pre_2','Phase 2','Standard Sources + Current Affairs Integration (Ongoing Throughout Prep)',
+        `${fmtDate(p1End)} → ${fmtDate(p2End)}`,[
+          makeTask('up2t1','read','Mrunal Economy Lectures + Notes (Mandatory for Economic Survey & Union Budget)',`${Math.round(dailyHours*0.30*Math.round(totalDays*0.25))} hrs`,'text-amber-400','bg-amber-400/10','border-amber-500/30','+100 XP','https://mrunal.org/economy'),
+          makeTask('up2t2','read','Daily Current Affairs: The Hindu / Indian Express (40 min). Link to Static Topics.',`${Math.round(dailyHours*0.35*Math.round(totalDays*0.25))} hrs`,'text-blue-400','bg-blue-400/10','border-blue-500/30','+100 XP','https://www.thehindu.com/'),
+          makeTask('up2t3','read','Monthly CA: Vision IAS Magazine + PMF IAS Environment Notes (All Months)',`${Math.round(dailyHours*0.20*Math.round(totalDays*0.25))} hrs`,'text-indigo-400','bg-indigo-400/10','border-indigo-500/30','+80 XP','https://visionias.in/current-affairs/monthly-magazine.php'),
+          makeTask('up2t4','practice','Solve 500 Chapter-Wise PYQs (Insights IAS / Rau\'s IAS). Classify: Static vs CA.',`${Math.round(dailyHours*0.15*Math.round(totalDays*0.25))} hrs`,'text-emerald-400','bg-emerald-400/10','border-emerald-500/30','+120 XP','https://www.insightsonindia.com/')
+        ]),
+
+      buildPhase('upsc_pre_3','Phase 3','MCQ Practice, Elimination Technique & Weak-Topic Targeting',
+        `${fmtDate(p2End)} → ${fmtDate(p3End)}`,[
+          makeTask('up3t1','practice','Solve ALL UPSC GS Prelims PYQs 1999–2024 in Timed Sessions (2 hours each)',`${Math.round(dailyHours*0.45*Math.round(totalDays*0.25))} hrs`,'text-emerald-400','bg-emerald-400/10','border-emerald-500/30','+160 XP','https://prepp.in/ias-exam/previous-year-papers/'),
+          makeTask('up3t2','practice','5 Topic Tests Per Week: Identify weakest area from PYQ analysis and drill it first',`${Math.round(dailyHours*0.30*Math.round(totalDays*0.25))} hrs`,'text-blue-400','bg-blue-400/10','border-blue-500/30','+100 XP'),
+          makeTask('up3t3','read','Master Elimination Technique: Eliminate 2 options → 50-50 guess is safe. Practice on 200 Qs.',`${Math.round(dailyHours*0.25*Math.round(totalDays*0.25))} hrs`,'text-amber-400','bg-amber-400/10','border-amber-500/30','+60 XP')
+        ]),
+
+      buildPhase('upsc_pre_4','Phase 4','Full Mock Tests + Current Affairs Revision + Final Sprint',
+        `${fmtDate(p3End)} → ${fmtDate(p4End)}`,[
+          makeTask('up4t1','target','Full Prelims Mocks Every Weekend: Vision IAS / Insights IAS (Target 110+ Before Exam)',`${Math.round(dailyHours*0.50*Math.round(totalDays*0.22))} hrs`,'text-red-400','bg-red-400/10','border-red-500/30','+200 XP','https://visionias.in/test-series/'),
+          makeTask('up4t2','read','After Every Mock: Spend 3 hrs on Answer Analysis, not Score. Revise errors within 24 hrs.',`${Math.round(dailyHours*0.30*Math.round(totalDays*0.22))} hrs`,'text-amber-400','bg-amber-400/10','border-amber-500/30','+80 XP'),
+          makeTask('up4t3','read','Final 4 Weeks: Only Revision — PYQs, Mocks, CA. Zero New Topics. Protect your sleep.',`${Math.round(dailyHours*0.20*Math.round(totalDays*0.22))} hrs`,'text-emerald-400','bg-emerald-400/10','border-emerald-500/30','+60 XP')
+        ])
+    ];
+  }
+
+  // ══════════════════════════════════════════════════════════
+  //  UPSC CSE — Prelims (CSAT)
+  // ══════════════════════════════════════════════════════════
+  if (safeExam === 'UPSC CSE' && safeSub === 'Prelims (CSAT)') {
+    const p1End = phaseEnd(start, 0.20);
+    const p2End = phaseEnd(p1End, 0.40);
+    const p3End = phaseEnd(p2End, 0.25);
+
+    return [
+      buildPhase('csat_1','Phase 1','Baseline Assessment — Identify Weak Zone: RC, LR, or Numeracy',
+        `${fmtDate(start)} → ${fmtDate(p1End)}`,[
+          makeTask('c1t1','practice','Solve 2023 + 2022 CSAT Paper (Full 2 hrs each). Score and categorize wrong answers by section.',`${Math.round(dailyHours*0.70*Math.round(totalDays*0.20))} hrs`,'text-red-400','bg-red-400/10','border-red-500/30','+80 XP','https://prepp.in/ias-exam/previous-year-papers/'),
+          makeTask('c1t2','read','If 80+ → Light prep only. If below 80 → Focus on your weakest section first for next 3 months.',`${Math.round(dailyHours*0.30*Math.round(totalDays*0.20))} hrs`,'text-amber-400','bg-amber-400/10','border-amber-500/30','+40 XP')
+        ]),
+
+      buildPhase('csat_2','Phase 2','RC + LR + Decision Making Mastery (Ongoing, Daily Practice)',
+        `${fmtDate(p1End)} → ${fmtDate(p2End)}`,[
+          makeTask('c2t1','practice','RC: Read 2 Editorials Daily → Summarize Central Idea in 2 sentences. Practice UPSC RC sets.',`${Math.round(dailyHours*0.35*Math.round(totalDays*0.40))} hrs`,'text-blue-400','bg-blue-400/10','border-blue-500/30','+100 XP','https://www.thehindu.com/opinion/'),
+          makeTask('c2t2','practice','LR: R.S. Aggarwal 30 min daily — Syllogisms, Blood Relations, Seating, Direction Puzzles',`${Math.round(dailyHours*0.35*Math.round(totalDays*0.40))} hrs`,'text-emerald-400','bg-emerald-400/10','border-emerald-500/30','+100 XP','https://www.google.com/search?q=RS+Aggarwal+Verbal+Reasoning+pdf'),
+          makeTask('c2t3','practice','Decision Making: Practice 50 UPSC PYQ Decision Making Qs. Read Mains Ethics chapters.',`${Math.round(dailyHours*0.30*Math.round(totalDays*0.40))} hrs`,'text-amber-400','bg-amber-400/10','border-amber-500/30','+80 XP')
+        ]),
+
+      buildPhase('csat_3','Phase 3','Numeracy, DI & Full Paper Practice (Qualify with 33% — Target 40%+)',
+        `${fmtDate(p2End)} → ${fmtDate(p3End)}`,[
+          makeTask('c3t1','practice','Numeracy: 20 DI Questions Daily — Bar Charts, Pie Charts, Tables. Mental Math Shortcuts.',`${Math.round(dailyHours*0.40*Math.round(totalDays*0.25))} hrs`,'text-blue-400','bg-blue-400/10','border-blue-500/30','+80 XP'),
+          makeTask('c3t2','target','Full CSAT Paper Practice (2 hrs): Time Strategy — RC 40min → LR 40min → Numeracy 30min',`${Math.round(dailyHours*0.40*Math.round(totalDays*0.25))} hrs`,'text-red-400','bg-red-400/10','border-red-500/30','+100 XP'),
+          makeTask('c3t3','read','Only attempt if 50%+ confident (33% cutoff — reckless guessing = negative marking risk)',`${Math.round(dailyHours*0.20*Math.round(totalDays*0.25))} hrs`,'text-amber-400','bg-amber-400/10','border-amber-500/30','+40 XP')
+        ])
+    ];
+  }
+
+  // ══════════════════════════════════════════════════════════
+  //  UPSC CSE — Mains (Essay)
+  // ══════════════════════════════════════════════════════════
+  if (safeExam === 'UPSC CSE' && safeSub === 'Mains (Essay)') {
+    const p1End = phaseEnd(start, 0.20);
+    const p2End = phaseEnd(p1End, 0.25);
+    const p3End = phaseEnd(p2End, 0.35);
+    const p4End = phaseEnd(p3End, 0.20);
+
+    return [
+      buildPhase('essay_1','Phase 1','Essay Anatomy Study — Understand What UPSC Rewards',
+        `${fmtDate(start)} → ${fmtDate(p1End)}`,[
+          makeTask('es1t1','read','Read 20 top-rated UPSC essay answers (Insights IAS TLP, Vision IAS essay module)',`${Math.round(dailyHours*0.50*Math.round(totalDays*0.20))} hrs`,'text-amber-400','bg-amber-400/10','border-amber-500/30','+80 XP','https://www.insightsonindia.com/category/essay/'),
+          makeTask('es1t2','read','Build Quotation Bank: 5 quotes per theme (Ethics, Democracy, Women, Tech, Environment, Governance)',`${Math.round(dailyHours*0.30*Math.round(totalDays*0.20))} hrs`,'text-blue-400','bg-blue-400/10','border-blue-500/30','+60 XP'),
+          makeTask('es1t3','read','Learn UPSC Essay Structure: Hook Intro → 4–5 Multi-dimensional Body Paras → Balanced Conclusion',`${Math.round(dailyHours*0.20*Math.round(totalDays*0.20))} hrs`,'text-indigo-400','bg-indigo-400/10','border-indigo-500/30','+40 XP')
+        ]),
+
+      buildPhase('essay_2','Phase 2','Quotation Bank, Template Building & 100-Word Outline Drills',
+        `${fmtDate(p1End)} → ${fmtDate(p2End)}`,[
+          makeTask('es2t1','read','Memorize: Tagore, Gandhi, Ambedkar, Nehru, Aristotle, Rousseau quotes (3 lines max each)',`${Math.round(dailyHours*0.40*Math.round(totalDays*0.25))} hrs`,'text-amber-400','bg-amber-400/10','border-amber-500/30','+80 XP'),
+          makeTask('es2t2','practice','Daily Drill: 100-word outline in 5 min for any given topic (Historical→Social→Economic→Ethical→Policy→Global→Future angles)',`${Math.round(dailyHours*0.40*Math.round(totalDays*0.25))} hrs`,'text-emerald-400','bg-emerald-400/10','border-emerald-500/30','+80 XP'),
+          makeTask('es2t3','read','Prepare Essay Templates for: Women Empowerment, Democracy, Federalism, Tech & Ethics, Environment, India\'s Foreign Policy',`${Math.round(dailyHours*0.20*Math.round(totalDays*0.25))} hrs`,'text-blue-400','bg-blue-400/10','border-blue-500/30','+60 XP')
+        ]),
+
+      buildPhase('essay_3','Phase 3','Weekly Essay Writing Practice — One Full Essay Every Week',
+        `${fmtDate(p2End)} → ${fmtDate(p3End)}`,[
+          makeTask('es3t1','practice','Write 1 Full Essay/Week (1000–1200 words, 90 min). Follow UPSC PYQ topics.',`${Math.round(dailyHours*0.45*Math.round(totalDays*0.35))} hrs`,'text-emerald-400','bg-emerald-400/10','border-emerald-500/30','+150 XP'),
+          makeTask('es3t2','read','Evaluate Your Essay: Intro(10) + Multidimensionality(40) + Flow(20) + Conclusion(15) + Language(15)',`${Math.round(dailyHours*0.30*Math.round(totalDays*0.35))} hrs`,'text-amber-400','bg-amber-400/10','border-amber-500/30','+80 XP'),
+          makeTask('es3t3','read','Eliminate Common Mistakes: Single-dimensional treatment, vague conclusion, >1200 words, no key-term definition',`${Math.round(dailyHours*0.25*Math.round(totalDays*0.35))} hrs`,'text-blue-400','bg-blue-400/10','border-blue-500/30','+60 XP')
+        ]),
+
+      buildPhase('essay_4','Phase 4','30 PYQ Essay Practice + Mock Essay Exams (3 Essays in 3 Hrs)',
+        `${fmtDate(p3End)} → ${fmtDate(p4End)}`,[
+          makeTask('es4t1','practice','Write 30 UPSC PYQ Essays (last 15 years). Identify which angles UPSC rewards most.',`${Math.round(dailyHours*0.55*Math.round(totalDays*0.20))} hrs`,'text-emerald-400','bg-emerald-400/10','border-emerald-500/30','+160 XP'),
+          makeTask('es4t2','target','Full Mock: 2 essays in 3 hours under exam conditions. Target 130+/250 (75th percentile).',`${Math.round(dailyHours*0.30*Math.round(totalDays*0.20))} hrs`,'text-red-400','bg-red-400/10','border-red-500/30','+120 XP'),
+          makeTask('es4t3','read','In Exam: 20 min outlining before writing. Never exceed 1200 words. Quality beats quantity.',`${Math.round(dailyHours*0.15*Math.round(totalDays*0.20))} hrs`,'text-amber-400','bg-amber-400/10','border-amber-500/30','+40 XP')
+        ])
+    ];
+  }
+
+  // ══════════════════════════════════════════════════════════
+  //  UPSC CSE — Mains (GS 1 or GS 2)
+  // ══════════════════════════════════════════════════════════
+  if (safeExam === 'UPSC CSE' && (safeSub === 'Mains (GS 1)' || safeSub === 'Mains (GS 2)')) {
+    const gs = safeSub.includes('GS 1') ? '1' : '2';
+    const src1 = gs === '1' ? 'Bipin Chandra (Modern History), Nitin Singhania (Art & Culture), GC Leong (Geography)' : 'M. Laxmikanth (Polity), Mrunal Governance, Sriram IAS IR Notes';
+    const p1End = phaseEnd(start, 0.25); const p2End = phaseEnd(p1End, 0.30);
+    const p3End = phaseEnd(p2End, 0.25); const p4End = phaseEnd(p3End, 0.20);
+
+    return [
+      buildPhase(`upsc_gs${gs}_1`,'Phase 1',`GS ${gs} Sources + NCERT Revision with Q&A Method`,
+        `${fmtDate(start)} → ${fmtDate(p1End)}`,[
+          makeTask(`g${gs}1t1`,'read',`Read: ${src1}. Use Q&A method (don't re-read passively).`,`${Math.round(dailyHours*0.55*Math.round(totalDays*0.25))} hrs`,'text-amber-400','bg-amber-400/10','border-amber-500/30','+120 XP'),
+          makeTask(`g${gs}1t2`,'read','Create Topic-Wise Mind Maps: Concept → Current Context → Way Forward (3 layers for every topic)',`${Math.round(dailyHours*0.25*Math.round(totalDays*0.25))} hrs`,'text-blue-400','bg-blue-400/10','border-blue-500/30','+80 XP'),
+          makeTask(`g${gs}1t3`,'practice','Solve 50 GS PYQs (chapter-wise). Understand structure of top-scoring answers from Insights IAS.',`${Math.round(dailyHours*0.20*Math.round(totalDays*0.25))} hrs`,'text-emerald-400','bg-emerald-400/10','border-emerald-500/30','+80 XP','https://www.insightsonindia.com/')
+        ]),
+
+      buildPhase(`upsc_gs${gs}_2`,'Phase 2','Answer Writing Framework — Structure, Format & Presentation',
+        `${fmtDate(p1End)} → ${fmtDate(p2End)}`,[
+          makeTask(`g${gs}2t1`,'practice','Write 2 Answers/Day from GS PYQs. Formula: Intro(2–3 lines) → 5–6 Body Points → Conclusion(Constitutional/Policy angle)',`${Math.round(dailyHours*0.50*Math.round(totalDays*0.30))} hrs`,'text-emerald-400','bg-emerald-400/10','border-emerald-500/30','+140 XP'),
+          makeTask(`g${gs}2t2`,'read','For 250-word (15-mark) answers: Add a relevant diagram, case study, or Constitutional Article reference.',`${Math.round(dailyHours*0.25*Math.round(totalDays*0.30))} hrs`,'text-amber-400','bg-amber-400/10','border-amber-500/30','+80 XP'),
+          makeTask(`g${gs}2t3`,'read','Get 4 Answers Evaluated by a Mentor Every Fortnight. Apply the feedback immediately in next batch.',`${Math.round(dailyHours*0.25*Math.round(totalDays*0.30))} hrs`,'text-blue-400','bg-blue-400/10','border-blue-500/30','+60 XP')
+        ]),
+
+      buildPhase(`upsc_gs${gs}_3`,'Phase 3','Current Affairs → GS Syllabus Integration (Weekly Mapping)',
+        `${fmtDate(p2End)} → ${fmtDate(p3End)}`,[
+          makeTask(`g${gs}3t1`,'read','Weekly: Map current affairs to GS syllabus (e.g., cyclone news → Geography + Society + Environment)',`${Math.round(dailyHours*0.40*Math.round(totalDays*0.25))} hrs`,'text-amber-400','bg-amber-400/10','border-amber-500/30','+80 XP'),
+          makeTask(`g${gs}3t2`,'practice','3 GS PYQs/Week integrating current examples. Keyword: Always link news to 2–3 syllabus dimensions.',`${Math.round(dailyHours*0.40*Math.round(totalDays*0.25))} hrs`,'text-emerald-400','bg-emerald-400/10','border-emerald-500/30','+100 XP'),
+          makeTask(`g${gs}3t3`,'read','Maintain a CA+GS Crosslink notebook. Each current event needs: Static link + Policy dimension + Way Forward.',`${Math.round(dailyHours*0.20*Math.round(totalDays*0.25))} hrs`,'text-blue-400','bg-blue-400/10','border-blue-500/30','+60 XP')
+        ]),
+
+      buildPhase(`upsc_gs${gs}_4`,'Phase 4','Full GS Mains Mocks + Time Management (9 min/question)',
+        `${fmtDate(p3End)} → ${fmtDate(p4End)}`,[
+          makeTask(`g${gs}4t1`,'target','Full GS Paper Mock (3 hrs): 20 questions, 9 min avg each. Attempt ALL questions — decent answers beat perfect few.',`${Math.round(dailyHours*0.55*Math.round(totalDays*0.20))} hrs`,'text-red-400','bg-red-400/10','border-red-500/30','+200 XP'),
+          makeTask(`g${gs}4t2`,'read','Legibility matters: Practice neat paragraphs + consistent pen. Examiners reward clean presentation.',`${Math.round(dailyHours*0.25*Math.round(totalDays*0.20))} hrs`,'text-amber-400','bg-amber-400/10','border-amber-500/30','+60 XP'),
+          makeTask(`g${gs}4t3`,'read','Target: 100+/250 in GS. Combined GS 1+2+Essay = 900 marks. Need ~600 for Interview Call.',`${Math.round(dailyHours*0.20*Math.round(totalDays*0.20))} hrs`,'text-blue-400','bg-blue-400/10','border-blue-500/30','+40 XP')
+        ])
+    ];
+  }
+
+  // ══════════════════════════════════════════════════════════
+  //  BPSC — Prelims (General Studies)
+  // ══════════════════════════════════════════════════════════
+  if (safeExam === 'BPSC' && safeSub === 'Prelims (General Studies)') {
+    const p1End = phaseEnd(start, 0.30);
+    const p2End = phaseEnd(p1End, 0.28);
+    const p3End = phaseEnd(p2End, 0.22);
+    const p4End = phaseEnd(p3End, 0.20);
+
+    return [
+      buildPhase('bpsc_pre_1','Phase 1','Bihar GS Static Foundation — Mandatory Bihar-Specific Content',
+        `${fmtDate(start)} → ${fmtDate(p1End)}`,[
+          makeTask('bp1t1','read','Bihar History: Magadha, Maurya, Pal Dynasty, Champaran Satyagraha 1917, Birsa Munda Movement, JP Movement',`${Math.round(dailyHours*0.30*Math.round(totalDays*0.30))} hrs`,'text-amber-400','bg-amber-400/10','border-amber-500/30','+100 XP','https://www.google.com/search?q=Bihar+history+for+BPSC+prelims+pdf'),
+          makeTask('bp1t2','read','Bihar Geography: All 38 Districts, Ganga Tributaries (Son, Gandak, Kosi, Bagmati), Agro-climatic Zones',`${Math.round(dailyHours*0.20*Math.round(totalDays*0.30))} hrs`,'text-blue-400','bg-blue-400/10','border-blue-500/30','+80 XP'),
+          makeTask('bp1t3','read','Standard GS: Lucent GK (All Chapters) + Spectrum Modern History + NCERT Polity (Laxmikanth)',`${Math.round(dailyHours*0.35*Math.round(totalDays*0.30))} hrs`,'text-indigo-400','bg-indigo-400/10','border-indigo-500/30','+120 XP','https://www.google.com/search?q=Lucent+GK+book+pdf'),
+          makeTask('bp1t4','practice','Solve BPSC PYQs 55th–70th BPC (Chapter-Wise). Questions repeat within 5-year cycles — identify patterns.',`${Math.round(dailyHours*0.15*Math.round(totalDays*0.30))} hrs`,'text-emerald-400','bg-emerald-400/10','border-emerald-500/30','+100 XP','https://www.drishtiias.com/bihar-pcs')
+        ]),
+
+      buildPhase('bpsc_pre_2','Phase 2','Current Affairs — National + Bihar Focus (Daily Reading)',
+        `${fmtDate(p1End)} → ${fmtDate(p2End)}`,[
+          makeTask('bp2t1','read','Read Dainik Jagran / Hindustan (Hindi) Daily for Bihar-specific news. Track CM announcements & state schemes.',`${Math.round(dailyHours*0.40*Math.round(totalDays*0.28))} hrs`,'text-amber-400','bg-amber-400/10','border-amber-500/30','+100 XP'),
+          makeTask('bp2t2','read','Monthly CA: Drishti IAS Bihar Special + Track: Jal Jeevan Hariyali, Mukhyamantri Balika Cycle Yojana, BSDM',`${Math.round(dailyHours*0.35*Math.round(totalDays*0.28))} hrs`,'text-blue-400','bg-blue-400/10','border-blue-500/30','+80 XP','https://www.drishtiias.com/bpsc'),
+          makeTask('bp2t3','read','Bihar Economy: Economic Survey of Bihar (latest). National Schemes + Bihar Implementation data.',`${Math.round(dailyHours*0.25*Math.round(totalDays*0.28))} hrs`,'text-indigo-400','bg-indigo-400/10','border-indigo-500/30','+70 XP')
+        ]),
+
+      buildPhase('bpsc_pre_3','Phase 3','Science + GMA + Factual Memorization',
+        `${fmtDate(p2End)} → ${fmtDate(p3End)}`,[
+          makeTask('bp3t1','read','General Science (NCERT 8–10): Physics (motion, electricity, light), Chemistry (acids, periodic table), Biology (body systems)',`${Math.round(dailyHours*0.40*Math.round(totalDays*0.22))} hrs`,'text-amber-400','bg-amber-400/10','border-amber-500/30','+80 XP','https://ncert.nic.in/textbook.php'),
+          makeTask('bp3t2','practice','GMA: R.S. Aggarwal (Hindi Medium) — Number Series, Analogy, Classification, Coding-Decoding (30 min daily)',`${Math.round(dailyHours*0.30*Math.round(totalDays*0.22))} hrs`,'text-emerald-400','bg-emerald-400/10','border-emerald-500/30','+80 XP'),
+          makeTask('bp3t3','read','Memorize: Key dates, Bihar awards, books & authors, sportspersons from Bihar, GI-tagged products (Makhana, Litchi)',`${Math.round(dailyHours*0.30*Math.round(totalDays*0.22))} hrs`,'text-blue-400','bg-blue-400/10','border-blue-500/30','+60 XP')
+        ]),
+
+      buildPhase('bpsc_pre_4','Phase 4','BPSC Mock Tests + Negative Marking Strategy (0.25 per wrong)',
+        `${fmtDate(p3End)} → ${fmtDate(p4End)}`,[
+          makeTask('bp4t1','target','BPSC Mocks from Samyak IAS / Drishti IAS (Hindi). Target 100+ out of 150 for safe Mains cutoff.',`${Math.round(dailyHours*0.50*Math.round(totalDays*0.20))} hrs`,'text-red-400','bg-red-400/10','border-red-500/30','+160 XP','https://www.drishtiias.com/bpsc-test-series'),
+          makeTask('bp4t2','read','Strategy: Skip if below 60% confidence (–0.25 per wrong). Bihar GS (40min) → History+Polity (30min) → Science (25min) → CA (25min)',`${Math.round(dailyHours*0.30*Math.round(totalDays*0.20))} hrs`,'text-amber-400','bg-amber-400/10','border-amber-500/30','+60 XP'),
+          makeTask('bp4t3','read','Final Revision: Bihar-specific facts sheet — 38 districts, 5 GI tags, 3 historical movements, 10 state schemes.',`${Math.round(dailyHours*0.20*Math.round(totalDays*0.20))} hrs`,'text-blue-400','bg-blue-400/10','border-blue-500/30','+40 XP')
+        ])
+    ];
+  }
+
+  // ══════════════════════════════════════════════════════════
+  //  BPSC — Mains (GS 1 or GS 2 or Essay)
+  // ══════════════════════════════════════════════════════════
+  if (safeExam === 'BPSC' && (safeSub === 'Mains (GS 1)' || safeSub === 'Mains (GS 2)' || safeSub === 'Mains (Essay)')) {
+    const isEssay = safeSub === 'Mains (Essay)';
+    const p1End = phaseEnd(start, 0.25); const p2End = phaseEnd(p1End, 0.30);
+    const p3End = phaseEnd(p2End, 0.28); const p4End = phaseEnd(p3End, 0.17);
+
+    return [
+      buildPhase('bpsc_mains_1','Phase 1',isEssay ? 'BPSC Essay Format + Bihar-Centric Knowledge Building' : 'Bihar-Specific Content Deep Dive',
+        `${fmtDate(start)} → ${fmtDate(p1End)}`,[
+          makeTask('bm1t1','read',isEssay ? 'Read 10 high-scoring BPSC Essay samples. Note structure: Intro(Quote/Stat) → 4 Thematic Paras → Conclusion(Policy ref)' : 'Bihar History: Revolt 1857 (Kunwar Singh), Champaran 1917 (detailed), Birsa Munda Ulgulan, JP Movement 1974',`${Math.round(dailyHours*0.45*Math.round(totalDays*0.25))} hrs`,'text-amber-400','bg-amber-400/10','border-amber-500/30','+100 XP','https://www.drishtiias.com/bpsc'),
+          makeTask('bm1t2','read',isEssay ? 'Prepare 10 Bihar Essay Templates: Flood challenge, Economic transformation post-2005, Women empowerment (Jeevika), Tourism (Bodh Gaya)' : 'Art & Culture: Madhubani Painting (UNESCO), Mithila Art, Patachitr, Chhath Puja (origin & significance)',`${Math.round(dailyHours*0.35*Math.round(totalDays*0.25))} hrs`,'text-blue-400','bg-blue-400/10','border-blue-500/30','+80 XP'),
+          makeTask('bm1t3','read',isEssay ? '3 Statistics to include per Bihar essay: Bihar Economic Survey data, Census comparison with national avg, scheme beneficiary numbers' : 'Bihar Economy: Economic Survey (latest edition), per capita income comparison, agriculture (paddy, wheat, makhana)',`${Math.round(dailyHours*0.20*Math.round(totalDays*0.25))} hrs`,'text-indigo-400','bg-indigo-400/10','border-indigo-500/30','+60 XP')
+        ]),
+
+      buildPhase('bpsc_mains_2','Phase 2','Answer Writing Practice — Bihar-Specific Examples in Every Answer',
+        `${fmtDate(p1End)} → ${fmtDate(p2End)}`,[
+          makeTask('bm2t1','practice',isEssay ? 'Write 2 Essays/Week (500 words, 50 min). Bihar topic + General topic alternately.' : '2 Answers/Day from BPSC Mains PYQs. Mandatory: 1 Bihar-specific example per answer.',`${Math.round(dailyHours*0.50*Math.round(totalDays*0.30))} hrs`,'text-emerald-400','bg-emerald-400/10','border-emerald-500/30','+140 XP'),
+          makeTask('bm2t2','read','Bihar Examples Bank: Women Empowerment → Jeevika SHGs + Kanya Utthan Yojana. Agriculture → Makhana (GI tag), Litchi.',`${Math.round(dailyHours*0.30*Math.round(totalDays*0.30))} hrs`,'text-amber-400','bg-amber-400/10','border-amber-500/30','+80 XP'),
+          makeTask('bm2t3','read','Get 4 answers/essays evaluated per month. Apply feedback. Word limit: 150 words short, 250 words long answers.',`${Math.round(dailyHours*0.20*Math.round(totalDays*0.30))} hrs`,'text-blue-400','bg-blue-400/10','border-blue-500/30','+60 XP')
+        ]),
+
+      buildPhase('bpsc_mains_3','Phase 3','Current Affairs Integration + Bihar Data Points',
+        `${fmtDate(p2End)} → ${fmtDate(p3End)}`,[
+          makeTask('bm3t1','read','Monthly Current Affairs: Drishti IAS Bihar + Track Bihar cabinet decisions, new schemes, district renames, elections',`${Math.round(dailyHours*0.40*Math.round(totalDays*0.28))} hrs`,'text-amber-400','bg-amber-400/10','border-amber-500/30','+80 XP','https://www.drishtiias.com/bpsc'),
+          makeTask('bm3t2','practice','3 Full Mains answers/week integrating 2024 current examples with Bihar angle.',`${Math.round(dailyHours*0.40*Math.round(totalDays*0.28))} hrs`,'text-emerald-400','bg-emerald-400/10','border-emerald-500/30','+100 XP'),
+          makeTask('bm3t3','read','For Economy Qs: Always quote Bihar Economic Survey statistics. Compare Bihar figure vs National average.',`${Math.round(dailyHours*0.20*Math.round(totalDays*0.28))} hrs`,'text-blue-400','bg-blue-400/10','border-blue-500/30','+60 XP')
+        ]),
+
+      buildPhase('bpsc_mains_4','Phase 4','Full Mains Mock Papers + Time Drill (10–12 min per question)',
+        `${fmtDate(p3End)} → ${fmtDate(p4End)}`,[
+          makeTask('bm4t1','target',isEssay ? 'Full Essay Mock (3 hrs, 3 Essays). Target 180+/300. Bihar essay must be your strongest.' : 'Full GS Mock (3 hrs, ~15 Qs). Target 160+/300. Every answer must have Bihar example.',`${Math.round(dailyHours*0.55*Math.round(totalDays*0.17))} hrs`,'text-red-400','bg-red-400/10','border-red-500/30','+180 XP'),
+          makeTask('bm4t2','read','Language check: Write in clear Hindi or formal English (not both). No literary flourishes — BPSC rewards precision.',`${Math.round(dailyHours*0.25*Math.round(totalDays*0.17))} hrs`,'text-amber-400','bg-amber-400/10','border-amber-500/30','+60 XP'),
+          makeTask('bm4t3','read','Legible handwriting + neat paragraphing = 15–20 marks easily won. Practice with real answer sheets.',`${Math.round(dailyHours*0.20*Math.round(totalDays*0.17))} hrs`,'text-blue-400','bg-blue-400/10','border-blue-500/30','+40 XP')
+        ])
+    ];
+  }
+
+  // ══════════════════════════════════════════════════════════
+  //  BPSC (Qualifying) — General Hindi
+  // ══════════════════════════════════════════════════════════
+  if (safeExam === 'BPSC (Qualifying)') {
+    const p1End = phaseEnd(start, 0.30);
+    const p2End = phaseEnd(p1End, 0.28);
+    const p3End = phaseEnd(p2End, 0.25);
+    const p4End = phaseEnd(p3End, 0.17);
+
+    return [
+      buildPhase('hindi_1','Phase 1','व्याकरण मूलभूत (30 Marks) — पर्यायवाची, विलोम, संधि, समास, मुहावरे',
+        `${fmtDate(start)} → ${fmtDate(p1End)}`,[
+          makeTask('h1t1','read','पर्यायवाची (200 pairs) + विलोम (150 words) → Drishti Hindi Vyakaran Book (Daily 20 min memorization)',`${Math.round(dailyHours*0.35*Math.round(totalDays*0.30))} hrs`,'text-amber-400','bg-amber-400/10','border-amber-500/30','+80 XP','https://www.drishtiias.com/hindi'),
+          makeTask('h1t2','read','मुहावरे एवं लोकोक्तियाँ (Min. 100) + संधि विच्छेद (Vyanjan, Swar, Visarg types) + समास (6 types with examples)',`${Math.round(dailyHours*0.35*Math.round(totalDays*0.30))} hrs`,'text-blue-400','bg-blue-400/10','border-blue-500/30','+80 XP'),
+          makeTask('h1t3','practice','BPSC PYQ Hindi Papers 60th–69th BPC: Grammar section only. Identify most-repeated grammar patterns.',`${Math.round(dailyHours*0.30*Math.round(totalDays*0.30))} hrs`,'text-emerald-400','bg-emerald-400/10','border-emerald-500/30','+80 XP')
+        ]),
+
+      buildPhase('hindi_2','Phase 2','वाक्य विन्यास (25 Marks) — लिंग, वचन, काल, कारक शुद्धि',
+        `${fmtDate(p1End)} → ${fmtDate(p2End)}`,[
+          makeTask('h2t1','practice','20 Sentence Corrections Daily: लिंग (gender), वचन (number), काल (tense), कारक (ने, को, से) errors',`${Math.round(dailyHours*0.50*Math.round(totalDays*0.28))} hrs`,'text-emerald-400','bg-emerald-400/10','border-emerald-500/30','+100 XP'),
+          makeTask('h2t2','read','Common Error Types: Wrong kaaraka with giving/receiving verbs, feminine plural irregulars, compound verb formation',`${Math.round(dailyHours*0.30*Math.round(totalDays*0.28))} hrs`,'text-amber-400','bg-amber-400/10','border-amber-500/30','+60 XP'),
+          makeTask('h2t3','practice','Passive Voice (कर्मवाच्य) + Direct/Indirect Speech (प्रत्यक्ष/परोक्ष कथन) practice — 15 sentences each type',`${Math.round(dailyHours*0.20*Math.round(totalDays*0.28))} hrs`,'text-blue-400','bg-blue-400/10','border-blue-500/30','+60 XP')
+        ]),
+
+      buildPhase('hindi_3','Phase 3','संक्षेपण (15 Marks) + निबंध लेखन (30 Marks)',
+        `${fmtDate(p2End)} → ${fmtDate(p3End)}`,[
+          makeTask('h3t1','practice','संक्षेपण Daily: Read 1 Dainik Bhaskar editorial → Write 80-word précis → Give 4-word title. Must use OWN words.',`${Math.round(dailyHours*0.40*Math.round(totalDays*0.25))} hrs`,'text-emerald-400','bg-emerald-400/10','border-emerald-500/30','+80 XP','https://www.bhaskar.com/'),
+          makeTask('h3t2','practice','Prepare 5 Essay Templates: डिजिटल इंडिया, महिला सशक्तिकरण, पर्यावरण प्रदूषण, युवाओं की भूमिका, भ्रष्टाचार',`${Math.round(dailyHours*0.35*Math.round(totalDays*0.25))} hrs`,'text-amber-400','bg-amber-400/10','border-amber-500/30','+80 XP'),
+          makeTask('h3t3','read','Essay Structure: प्रस्तावना (Quote/Stat) → 3 मुख्य अनुच्छेद → निष्कर्ष (नीति संदर्भ). लिंग शुद्धि ज़रूरी.',`${Math.round(dailyHours*0.25*Math.round(totalDays*0.25))} hrs`,'text-blue-400','bg-blue-400/10','border-blue-500/30','+60 XP')
+        ]),
+
+      buildPhase('hindi_4','Phase 4','Full Paper Practice — Target 45+/100 (Need only 30 to Qualify)',
+        `${fmtDate(p3End)} → ${fmtDate(p4End)}`,[
+          makeTask('h4t1','target','Solve Full BPSC Hindi Papers (60th–69th BPC) in 3 Hours. Note recurring grammar patterns.',`${Math.round(dailyHours*0.55*Math.round(totalDays*0.17))} hrs`,'text-red-400','bg-red-400/10','border-red-500/30','+120 XP'),
+          makeTask('h4t2','read','Final Grammar Revision: 30 most-repeated PYQ grammar patterns + 5 essay templates.',`${Math.round(dailyHours*0.25*Math.round(totalDays*0.17))} hrs`,'text-amber-400','bg-amber-400/10','border-amber-500/30','+50 XP'),
+          makeTask('h4t3','read','Handwriting check: Clear Devanagari script, proper मात्रा, clean paragraph breaks. Legibility = free marks.',`${Math.round(dailyHours*0.20*Math.round(totalDays*0.17))} hrs`,'text-blue-400','bg-blue-400/10','border-blue-500/30','+40 XP')
+        ])
+    ];
+  }
+
+  // ══════════════════════════════════════════════════════════
+  //  BEU / AKTU — Generic University Semester
+  // ══════════════════════════════════════════════════════════
+  if (safeExam === 'BEU (Bihar Engg Univ)' || safeExam === 'AKTU (UP)') {
+    const univName = safeExam === 'BEU (Bihar Engg Univ)' ? 'BEU' : 'AKTU';
+    const p1End = phaseEnd(start, 0.20); const p2End = phaseEnd(p1End, 0.30);
+    const p3End = phaseEnd(p2End, 0.28); const p4End = phaseEnd(p3End, 0.22);
+
+    const syllabus = SYLLABUS_DATA[safeExam]?.[safeSub] || [];
+
+    return [
+      buildPhase(`${univName.toLowerCase()}_1`,'Phase 1',`Internal Assessment Prep + Syllabus Mapping (${Math.round(totalDays*0.20)} Days)`,
+        `${fmtDate(start)} → ${fmtDate(p1End)}`,[
+          makeTask('u1t1','read',`Download Official ${univName} Syllabus. Mark PYQ-frequent topics per unit (High → Medium → Low priority).`,`${Math.round(dailyHours*0.25*Math.round(totalDays*0.20))} hrs`,'text-amber-400','bg-amber-400/10','border-amber-500/30','+60 XP',safeExam==='BEU (Bihar Engg Univ)'?'https://beu.ac.in/':'https://aktu.ac.in/'),
+          makeTask('u1t2','read',`Attend ALL Classes + Submit Every Assignment (Internal = 30 marks — don't lose a single mark here).`,`${Math.round(dailyHours*0.35*Math.round(totalDays*0.20))} hrs`,'text-blue-400','bg-blue-400/10','border-blue-500/30','+60 XP'),
+          makeTask('u1t3','read','Prepare Lab Files Neatly. Ask about viva questions from seniors. Lab oral = easy 10–15 marks.',`${Math.round(dailyHours*0.25*Math.round(totalDays*0.20))} hrs`,'text-indigo-400','bg-indigo-400/10','border-indigo-500/30','+40 XP'),
+          makeTask('u1t4','read','Mid-Semester Prep: Identify teacher\'s 3 favourite topics per subject. Prepare those first.',`${Math.round(dailyHours*0.15*Math.round(totalDays*0.20))} hrs`,'text-emerald-400','bg-emerald-400/10','border-emerald-500/30','+40 XP')
+        ]),
+
+      buildPhase(`${univName.toLowerCase()}_2`,'Phase 2','Concept Study — All Units (NPTEL + Textbooks)',
+        `${fmtDate(p1End)} → ${fmtDate(p2End)}`,
+        syllabus.map((item, idx) => makeTask(
+          `u2t${idx+1}`, 'video',
+          `Unit ${idx+1}: ${item.section} — ${item.topics.split(',')[0].trim()} (Source: ${item.source || 'Standard Textbook'})`,
+          `${Math.max(2, Math.round(dailyHours * 0.25 * Math.round(totalDays*0.30) / Math.max(1,syllabus.length)))} hrs`,
+          'text-blue-400','bg-blue-400/10','border-blue-500/30', `+${60 + idx*10} XP`,
+          `https://nptel.ac.in/courses`, true
+        )).concat([
+          makeTask('u2_extra','read','Write derivations by hand 3× each. Draw labeled diagrams for every theory answer. Marks are step-wise.',`${Math.round(dailyHours*0.15*Math.round(totalDays*0.30))} hrs`,'text-amber-400','bg-amber-400/10','border-amber-500/30','+60 XP')
+        ])
+      ),
+
+      buildPhase(`${univName.toLowerCase()}_3`,'Phase 3',`5-Year PYQ Sprint — Identify Repeating Questions`,
+        `${fmtDate(p2End)} → ${fmtDate(p3End)}`,[
+          makeTask('u3t1','practice',`Solve ${univName} PYQs 2018–2024 for every subject. 60–70% of End-Sem questions repeat directly.`,`${Math.round(dailyHours*0.50*Math.round(totalDays*0.28))} hrs`,'text-emerald-400','bg-emerald-400/10','border-emerald-500/30','+150 XP',safeExam==='AKTU (UP)'?'https://aktu.ac.in/uploads/question-paper':'https://beu.ac.in/'),
+          makeTask('u3t2','read',`${univName} Pattern: Attempt 7/10 questions (choose wisely). Prepare 8 topics minimum to have choice.`,`${Math.round(dailyHours*0.25*Math.round(totalDays*0.28))} hrs`,'text-amber-400','bg-amber-400/10','border-amber-500/30','+60 XP'),
+          makeTask('u3t3','practice','Section A Prep (Short Answers 2 marks): Define 5 terms + 3 formulas per unit. Never skip Section A.',`${Math.round(dailyHours*0.25*Math.round(totalDays*0.28))} hrs`,'text-blue-400','bg-blue-400/10','border-blue-500/30','+80 XP')
+        ]),
+
+      buildPhase(`${univName.toLowerCase()}_4`,'Phase 4','End-Semester Strategy + Presentation Drilling',
+        `${fmtDate(p3End)} → ${fmtDate(p4End)}`,[
+          makeTask('u4t1','practice','Write practice answers under 3-hour timed conditions. Every answer needs: diagram, labeled components, unit-checked numericals.',`${Math.round(dailyHours*0.40*Math.round(totalDays*0.22))} hrs`,'text-emerald-400','bg-emerald-400/10','border-emerald-500/30','+120 XP'),
+          makeTask('u4t2','read','Never leave a question blank — 2–3 correct lines = 2–3 marks. Partial credit is guaranteed in university exams.',`${Math.round(dailyHours*0.25*Math.round(totalDays*0.22))} hrs`,'text-amber-400','bg-amber-400/10','border-amber-500/30','+50 XP'),
+          makeTask('u4t3','read','Final Revision Sheet (per subject): 10 derivations, 5 diagrams, 10 definitions, 5 numerical formulas. Review night before.',`${Math.round(dailyHours*0.25*Math.round(totalDays*0.22))} hrs`,'text-blue-400','bg-blue-400/10','border-blue-500/30','+50 XP'),
+          makeTask('u4t4','read',safeExam==='AKTU (UP)'?'AKTU Grace Mark Provision: Up to 7% per subject. But target 45+ for comfort. Apply re-checking if borderline fail.':'BEU Tip: Neat circuit/block diagrams in answers earn grace marks. Examiners reward good presentation.',`${Math.round(dailyHours*0.10*Math.round(totalDays*0.22))} hrs`,'text-indigo-400','bg-indigo-400/10','border-indigo-500/30','+30 XP')
+        ])
+    ];
+  }
+
+  // ══════════════════════════════════════════════════════════
+  //  GENERIC FALLBACK — Other GATE branches (ME, CE, EE, IN)
+  // ══════════════════════════════════════════════════════════
+  const fullSyllabus = SYLLABUS_DATA[safeExam]?.[safeSub] || [];
+  const p1End = phaseEnd(start, 0.15);
+  const p2End = phaseEnd(p1End, 0.50);
+  const p3End = phaseEnd(p2End, 0.20);
+  const p4End = phaseEnd(p3End, 0.15);
+
+  return [
+    buildPhase('gen_1','Phase 1','Engineering Mathematics (15% — Foundation for All Subjects)',
+      `${fmtDate(start)} → ${fmtDate(p1End)}`,[
+        makeTask('gn1t1','video','NPTEL: Linear Algebra, Calculus, ODEs, Probability & Statistics — Use GATE Virtual Calculator from Day 1',`${Math.round(dailyHours*0.55*Math.round(totalDays*0.15))} hrs`,'text-blue-400','bg-blue-400/10','border-blue-500/30','+100 XP','https://nptel.ac.in',true),
+        makeTask('gn1t2','practice','Solve 10 GATE Maths PYQs Daily from GateOverflow. Build Formula Sheet (all key results on 1 page).',`${Math.round(dailyHours*0.45*Math.round(totalDays*0.15))} hrs`,'text-emerald-400','bg-emerald-400/10','border-emerald-500/30','+80 XP','https://gateoverflow.in/tag/engineering-mathematics')
+      ]),
+
+    buildPhase('gen_2','Phase 2','Core Subject Mastery — In Order of Weightage (Highest First)',
+      `${fmtDate(p1End)} → ${fmtDate(p2End)}`,
+      fullSyllabus.map((item, idx) => makeTask(
+        `gn2t${idx+1}`, 'video',
+        `[${item.weight || '?'}%] ${item.section}: ${(item.topics||'').split(',')[0].trim()} — ${item.source || 'Standard Textbook'}`,
+        `${Math.max(3, Math.round(dailyHours * 0.8 * Math.round(totalDays*0.50) / Math.max(1,fullSyllabus.length)))} hrs`,
+        'text-blue-400','bg-blue-400/10','border-blue-500/30', `+${80 + (item.weight||0)} XP`,
+        item.book ? `https://www.google.com/search?q=${encodeURIComponent(item.book)}` : '',
+        true
+      )).concat([
+        makeTask('gn2_pyq','practice','After each subject: Solve ALL GATE PYQs for that topic on GateOverflow. Read every top-voted explanation.',`${Math.round(dailyHours*0.20*Math.round(totalDays*0.50))} hrs`,'text-emerald-400','bg-emerald-400/10','border-emerald-500/30','+160 XP','https://gateoverflow.in/')
+      ])
+    ),
+
+    buildPhase('gen_3','Phase 3','NAT Practice + General Aptitude + PYQ Full Marathon',
+      `${fmtDate(p2End)} → ${fmtDate(p3End)}`,[
+        makeTask('gn3t1','practice','100+ NAT Questions per Subject — Always attempt NAT (no negative marking = free marks if estimated right)',`${Math.round(dailyHours*0.35*Math.round(totalDays*0.20))} hrs`,'text-emerald-400','bg-emerald-400/10','border-emerald-500/30','+100 XP'),
+        makeTask('gn3t2','practice','Full PYQ Marathon: Solve ALL GATE Papers 2010–2024 in your branch under strict 3-hour timed conditions',`${Math.round(dailyHours*0.40*Math.round(totalDays*0.20))} hrs`,'text-blue-400','bg-blue-400/10','border-blue-500/30','+140 XP','https://gateoverflow.in/'),
+        makeTask('gn3t3','practice','GA Sprint: Verbal RC + Sentence Completion (100 Qs) + Quant Ratios/Speed/DI (100 Qs). Target 13+/15.',`${Math.round(dailyHours*0.25*Math.round(totalDays*0.20))} hrs`,'text-amber-400','bg-amber-400/10','border-amber-500/30','+80 XP')
+      ]),
+
+    buildPhase('gen_4','Phase 4','10+ Full-Length CBT Mocks + Final Error Elimination',
+      `${fmtDate(p3End)} → ${fmtDate(p4End)}`,[
+        makeTask('gn4t1','target','10 Full-Length Branch Mocks in Exact 3-Hour CBT Mode — TestBook / MADE Easy / GATE Academy',`${Math.round(dailyHours*0.55*Math.round(totalDays*0.15))} hrs`,'text-red-400','bg-red-400/10','border-red-500/30','+200 XP','https://testbook.com/gate-test-series'),
+        makeTask('gn4t2','read','Exam Order: GA First (25 min) → 1-mark Qs (40 min) → 2-mark Qs (90 min) → Review (15 min). Never panic.',`${Math.round(dailyHours*0.25*Math.round(totalDays*0.15))} hrs`,'text-amber-400','bg-amber-400/10','border-amber-500/30','+50 XP'),
+        makeTask('gn4t3','read','Final 2 Weeks: Only Formula Sheets + Error Log. Zero new content. Stop new topics 3 days before exam.',`${Math.round(dailyHours*0.20*Math.round(totalDays*0.15))} hrs`,'text-blue-400','bg-blue-400/10','border-blue-500/30','+40 XP')
+      ])
+  ];
 };
 
 const calculateUserLevel = (userData) => {
@@ -1263,6 +1742,611 @@ const ServerConnectionLoader = ({ exam, sub, testType, topicIndex, sessionIndex,
   );
 };
 
+// --- EXAM SPECIFIC DEFAULT STRATEGIES ---
+// ============================================================
+// REPLACE YOUR EXISTING getDefaultStrategy FUNCTION WITH THIS
+// ============================================================
+
+const getDefaultStrategy = (exam, sub) => {
+
+  // ─── GATE ──────────────────────────────────────────────────────────────────
+
+  if (exam === 'GATE' && sub === 'Computer Science (CS)') {
+    return [
+      {
+        title: "Phase 1: Mathematics & Digital Logic (Weeks 1–4)",
+        icon: <BookOpen className="w-5 h-5" />, color: "text-blue-400", bg: "bg-blue-400/20", border: "border-blue-500/30",
+        lightColor: [239, 246, 255], colorRGB: [59, 130, 246], borderColor: [147, 197, 253],
+        text: "Start with Engineering Mathematics (15 marks — never skip). Cover Discrete Math (sets, logic, graph theory, counting), Linear Algebra, Probability, and Calculus from standard NPTEL lectures. Simultaneously cover Digital Logic (Boolean algebra, Karnaugh maps, flip-flops, MSI circuits). Solve GATE 2010–2024 PYQs chapter-wise from GO Book. Target: 70%+ accuracy in maths within 4 weeks. Use virtual calculator from Day 1."
+      },
+      {
+        title: "Phase 2: Core CS Subjects (Weeks 5–14)",
+        icon: <History className="w-5 h-5" />, color: "text-emerald-400", bg: "bg-emerald-400/20", border: "border-emerald-500/30",
+        lightColor: [236, 253, 245], colorRGB: [16, 185, 129], borderColor: [110, 231, 183],
+        text: "Cover the highest-weightage subjects in this order: Algorithms + Data Structures (22% combined) → OS (10%) → DBMS (8%) → Computer Networks (9%) → TOC (8%) → COA (8%) → Compiler Design (4%). For DS/Algo, solve every CLRS problem for the relevant chapter. For OS — Galvin is mandatory. Use GateOverflow.in daily to read explanations of tricky PYQs. Build detailed 1-page formula sheets per subject as you go."
+      },
+      {
+        title: "Phase 3: Programming, PYQ Marathon & Speed (Weeks 15–18)",
+        icon: <PenTool className="w-5 h-5" />, color: "text-purple-400", bg: "bg-purple-400/20", border: "border-purple-500/30",
+        lightColor: [255, 251, 235], colorRGB: [245, 158, 11], borderColor: [253, 211, 77],
+        text: "C programming and recursion tracing questions appear every year — practice 50+ tracing problems. Do a full PYQ marathon: solve ALL 15 years of GATE CS papers under timed conditions. Analyse every wrong answer on GateOverflow. Practice 2-mark numerical questions with the virtual calculator for speed. Target: 80 marks in 3 hours on mock papers. Focus on General Aptitude (15 marks are easy pickings — score 13+)."
+      },
+      {
+        title: "Phase 4: Full-Length CBT Mocks & Error Analysis (Weeks 19–24)",
+        icon: <Target className="w-5 h-5" />, color: "text-red-400", bg: "bg-red-400/20", border: "border-red-500/30",
+        lightColor: [254, 242, 242], colorRGB: [239, 68, 68], borderColor: [252, 165, 165],
+        text: "Attempt minimum 12 full-length mocks (TestBook, MADE Easy, GATE Academy) in exam-exact 3-hour CBT mode. CRITICAL: Never leave a 1-mark question unattempted — risk is only 0.33. For 2-mark questions, leave if >50% unsure (risk = 0.66). Maintain an 'Error Log' — classify mistakes as Concept, Careless, or Time errors. In final 2 weeks: only revise formula sheets, error log, and attempt 2 mocks per week."
+      }
+    ];
+  }
+
+  if (exam === 'GATE' && sub === 'Electronics & Communication (EC)') {
+    return [
+      {
+        title: "Phase 1: Engineering Mathematics & Signals (Weeks 1–4)",
+        icon: <BookOpen className="w-5 h-5" />, color: "text-blue-400", bg: "bg-blue-400/20", border: "border-blue-500/30",
+        lightColor: [239, 246, 255], colorRGB: [59, 130, 246], borderColor: [147, 197, 253],
+        text: "Engineering Maths (15%) is the backbone of EC GATE. Master Complex Variables, Fourier Series, Laplace & Z-Transform — these appear in Signals, Control, and Communications too. Then cover Signals & Systems (10%): LTI systems, Fourier Transform, sampling theorem (Shannon). Use NPTEL lectures by Prof. S.C. Dey. Solve Signals PYQs from 2010 onwards. This phase sets up 25% of your total marks."
+      },
+      {
+        title: "Phase 2: Devices, Analog & Digital Circuits (Weeks 5–12)",
+        icon: <History className="w-5 h-5" />, color: "text-emerald-400", bg: "bg-emerald-400/20", border: "border-emerald-500/30",
+        lightColor: [236, 253, 245], colorRGB: [16, 185, 129], borderColor: [110, 231, 183],
+        text: "Electronic Devices (15%) — thoroughly study p-n junction, MOSFET, BJT characteristics, and CMOS logic. Sedra/Smith is the reference. Analog Circuits (10%) — focus on op-amp circuits, feedback amplifiers, oscillators (Barkhausen). Digital Circuits (10%) — state machines, ADC/DAC converters, hazard elimination. These 3 subjects combine for 35% marks. NEVER skip Numerical Answer Type (NAT) questions in these topics — they have no negative marking."
+      },
+      {
+        title: "Phase 3: Control Systems, Communications & EM (Weeks 13–18)",
+        icon: <PenTool className="w-5 h-5" />, color: "text-purple-400", bg: "bg-purple-400/20", border: "border-purple-500/30",
+        lightColor: [255, 251, 235], colorRGB: [245, 158, 11], borderColor: [253, 211, 77],
+        text: "Control Systems (10%): Bode plots, Nyquist criterion, Root Locus — practice graphical questions with ruler on paper. Communications (15%): AM/FM/PM modulation, SNR calculations, digital PCM/PCM — memorise standard formulas. Electromagnetics (10%): Maxwell's equations, plane waves, Smith Chart for transmission lines — use 3Blue1Brown style intuition. These subjects are highly numerical. Practice NAT-style questions exclusively for 2 weeks."
+      },
+      {
+        title: "Phase 4: Mocks, Networks & Aptitude (Weeks 19–24)",
+        icon: <Target className="w-5 h-5" />, color: "text-red-400", bg: "bg-red-400/20", border: "border-red-500/30",
+        lightColor: [254, 242, 242], colorRGB: [239, 68, 68], borderColor: [252, 165, 165],
+        text: "Networks (10%): KVL/KCL, Thevenin/Norton, two-port parameters — solve all GATE PYQs from 2005. Score General Aptitude (15 marks guaranteed) — Verbal: RC & sentence completion; Quant: ratios, time-speed. Attempt 10 full-length EC mocks. In exam: attempt GA first (25 min), then 1-mark Qs (45 min), then 2-mark Qs (90 min). Final 2 weeks: only revise formula sheets and error logs."
+      }
+    ];
+  }
+
+  if (exam === 'GATE' && sub === 'Electrical (EE)') {
+    return [
+      {
+        title: "Phase 1: Circuit Theory & Mathematics (Weeks 1–5)",
+        icon: <BookOpen className="w-5 h-5" />, color: "text-blue-400", bg: "bg-blue-400/20", border: "border-blue-500/30",
+        lightColor: [239, 246, 255], colorRGB: [59, 130, 246], borderColor: [147, 197, 253],
+        text: "Electric Circuits (15%) is the foundation of EE GATE. Master network analysis: nodal/mesh analysis, superposition, Thevenin/Norton, transient response of RC/RL/RLC circuits, and phasor analysis. Engineering Mathematics (15%): focus on Differential Equations (Laplace), Matrix algebra, and Probability — directly used in signals and control. NPTEL Prof. A. Chakrabarti is the gold standard. Complete circuit PYQs 2008–2024."
+      },
+      {
+        title: "Phase 2: Machines, Power & Control (Weeks 6–14)",
+        icon: <History className="w-5 h-5" />, color: "text-emerald-400", bg: "bg-emerald-400/20", border: "border-emerald-500/30",
+        lightColor: [236, 253, 245], colorRGB: [16, 185, 129], borderColor: [110, 231, 183],
+        text: "Electrical Machines (15%): transformers (equivalent circuit, OC/SC test), DC machines (armature reaction), induction & synchronous machines — use A.E. Fitzgerald textbook. Power Systems (20%): per-unit system, load flow (Newton-Raphson), symmetrical fault analysis (sequence components), economic load dispatch — highest weightage in EE. Control Systems (10%): Routh-Hurwitz, Root Locus, Bode plot — practice plotting problems on paper. Target 50%+ accuracy in mocks for this phase."
+      },
+      {
+        title: "Phase 3: Signals, Analog & Power Electronics (Weeks 15–19)",
+        icon: <PenTool className="w-5 h-5" />, color: "text-purple-400", bg: "bg-purple-400/20", border: "border-purple-500/30",
+        lightColor: [255, 251, 235], colorRGB: [245, 158, 11], borderColor: [253, 211, 77],
+        text: "Signals & Systems (10%): Fourier/Laplace transforms, sampling — connect to circuit transients for reinforcement. Analog Electronics (10%): op-amp circuits, diode applications, BJT biasing. Power Electronics (10%): converters (Buck/Boost/Buck-Boost), SCR commutation, PWM inverters — draw equivalent circuits for each mode. Electromagnetic Fields (5%): Maxwell's equations, boundary conditions. Focus on NAT questions — no negative marking makes them free marks if estimated correctly."
+      },
+      {
+        title: "Phase 4: Full Mocks & Weak Area Elimination (Weeks 20–24)",
+        icon: <Target className="w-5 h-5" />, color: "text-red-400", bg: "bg-red-400/20", border: "border-red-500/30",
+        lightColor: [254, 242, 242], colorRGB: [239, 68, 68], borderColor: [252, 165, 165],
+        text: "Take 12 full-length EE mocks in strict 3-hour CBT mode. Use the virtual calculator for per-unit, fault MVA, and converter ratio calculations — practice speed. In GATE EE, Power Systems + Machines = 35% — these must be your highest-scoring subjects. Score 13/15 in General Aptitude. Maintain error log and classify errors. Final 2 weeks: only formula sheets, past mocks review, and timed GA practice."
+      }
+    ];
+  }
+
+  if (exam === 'GATE' && sub === 'Mechanical (ME)') {
+    return [
+      {
+        title: "Phase 1: Engineering Mathematics & Mechanics (Weeks 1–4)",
+        icon: <BookOpen className="w-5 h-5" />, color: "text-blue-400", bg: "bg-blue-400/20", border: "border-blue-500/30",
+        lightColor: [239, 246, 255], colorRGB: [59, 130, 246], borderColor: [147, 197, 253],
+        text: "Engineering Maths (15%) — focus on ODEs, Numerical Methods (Newton-Raphson, Euler), Linear Algebra, and Probability — all appear in heat transfer and vibrations. Engineering Mechanics: Statics (FBD, friction, centroid), Dynamics (kinematics, D'Alembert) — R.C. Hibbeler is the bible. Strength of Materials (SOM): stress-strain, Mohr's circle, bending/shear diagrams — draw every cross-section problem by hand. This phase covers 30%+ of the paper."
+      },
+      {
+        title: "Phase 2: TOM, Fluid Mechanics & Thermodynamics (Weeks 5–14)",
+        icon: <History className="w-5 h-5" />, color: "text-emerald-400", bg: "bg-emerald-400/20", border: "border-emerald-500/30",
+        lightColor: [236, 253, 245], colorRGB: [16, 185, 129], borderColor: [110, 231, 183],
+        text: "Theory of Machines (10%): gear trains, cams, balancing, vibrations — S.S. Rattan textbook. Fluid Mechanics (10%): Bernoulli equation, viscous flow (Poiseuille), Moody chart, turbomachinery — draw every flow problem. Thermodynamics (15%): laws, cycles (Rankine, Brayton, Otto, Diesel), psychrometrics — P.K. Nag textbook is mandatory. Heat Transfer (10%): conduction (fin equation), convection (Nu, Re, Pr correlations), radiation — memorise standard correlations. These 4 subjects = 45% of total marks."
+      },
+      {
+        title: "Phase 3: Manufacturing & Industrial Engineering (Weeks 15–19)",
+        icon: <PenTool className="w-5 h-5" />, color: "text-purple-400", bg: "bg-purple-400/20", border: "border-purple-500/30",
+        lightColor: [255, 251, 235], colorRGB: [245, 158, 11], borderColor: [253, 211, 77],
+        text: "Manufacturing (10%): metal casting (shrinkage, riser design), welding (HAZ), metal forming (rolling, forging), CNC programming basics. Metrology: tolerances, surface finish, CMM. Industrial Engineering (10%): PERT/CPM network, EOQ inventory, line balancing, queuing theory (M/M/1) — solve 20+ numerical questions daily. These are scoring areas where formula-memorisation directly converts to marks. Operations Research problems are highly predictable."
+      },
+      {
+        title: "Phase 4: Mocks, Numerical Speed & Aptitude (Weeks 20–24)",
+        icon: <Target className="w-5 h-5" />, color: "text-red-400", bg: "bg-red-400/20", border: "border-red-500/30",
+        lightColor: [254, 242, 242], colorRGB: [239, 68, 68], borderColor: [252, 165, 165],
+        text: "GATE ME is 95% numerical — calculator speed is critical. Practice using the virtual calculator for thermodynamic cycle calculations (Rankine efficiency, COP of refrigerators). Attempt 12 full-length ME mocks. In exam: skip if numerical value seems non-standard (avoid negative marking). NAT questions (no negative marking) — always attempt even with estimates. Score 13/15 in GA. Final week: formula sheets for Thermo cycles, Heat Transfer correlations, and Fluid Mechanics equations only."
+      }
+    ];
+  }
+
+  if (exam === 'GATE' && sub === 'Civil (CE)') {
+    return [
+      {
+        title: "Phase 1: Structural Engineering Foundation (Weeks 1–6)",
+        icon: <BookOpen className="w-5 h-5" />, color: "text-blue-400", bg: "bg-blue-400/20", border: "border-blue-500/30",
+        lightColor: [239, 246, 255], colorRGB: [59, 130, 246], borderColor: [147, 197, 253],
+        text: "Structural Analysis (15%): Degree of static/kinematic indeterminacy, Virtual Work, Slope Deflection, Moment Distribution, and Influence Lines — draw every structure by hand. Solid Mechanics (10%): Bending stress, shear stress, torsion, columns — Mohr's circle for every stress state. RCC Design (10%): IS 456 codal provisions, beam/slab/column design using limit state method — memorise IS code directly. Steel Design (5%): IS 800, connections, beam-column interaction."
+      },
+      {
+        title: "Phase 2: Geotechnical & Water Resources (Weeks 7–14)",
+        icon: <History className="w-5 h-5" />, color: "text-emerald-400", bg: "bg-emerald-400/20", border: "border-emerald-500/30",
+        lightColor: [236, 253, 245], colorRGB: [16, 185, 129], borderColor: [110, 231, 183],
+        text: "Geotechnical (15%): Soil classification (Unified system), Atterberg limits, permeability (Darcy's law), consolidation (Terzaghi), shear strength (Mohr-Coulomb), bearing capacity (Terzaghi's equation), slope stability — K.R. Arora textbook. Fluid Mechanics & Hydraulics (10%): open channel flow, Manning's equation, hydraulic jump, pipe networks. Hydrology (5%): unit hydrograph, flood routing, rainfall-runoff. Irrigation Engineering: canal design, duty-delta-discharge relations."
+      },
+      {
+        title: "Phase 3: Environmental, Survey & Transportation (Weeks 15–19)",
+        icon: <PenTool className="w-5 h-5" />, color: "text-purple-400", bg: "bg-purple-400/20", border: "border-purple-500/30",
+        lightColor: [255, 251, 235], colorRGB: [245, 158, 11], borderColor: [253, 211, 77],
+        text: "Environmental Engineering (10%): Water treatment (coagulation, sedimentation, disinfection), sewage treatment (BOD, DO sag curve, activated sludge), air quality standards. Transportation (10%): Highway design (SSD, OSD), pavement design (CBR, IRC provisions), traffic engineering (Greenshield's model, PCU, LOS). Surveying (5%): errors, levelling, theodolite — numerical problems are straightforward if formulas are memorised. Engineering Maths (15%): Linear algebra, ODEs, Probability — never neglect this."
+      },
+      {
+        title: "Phase 4: Mocks, IS Code Revision & Aptitude (Weeks 20–24)",
+        icon: <Target className="w-5 h-5" />, color: "text-red-400", bg: "bg-red-400/20", border: "border-red-500/30",
+        lightColor: [254, 242, 242], colorRGB: [239, 68, 68], borderColor: [252, 165, 165],
+        text: "GATE CE tests IS code values directly — IS 456, IS 800, IS 1893 (seismic), IRC codes must be at your fingertips. Attempt 10 full CE mocks. Structural Analysis + Geotech + RCC = 40% of marks — these must be your strongest areas. Use virtual calculator for consolidation settlements and bearing capacity calculations. Score 13+ in GA. Analyse every mock: wrong answers in Structural Analysis are most expensive — resolve every single one."
+      }
+    ];
+  }
+
+  if (exam === 'GATE') {
+    // Generic GATE for other branches
+    return [
+      {
+        title: "Phase 1: Engineering Mathematics (Weeks 1–4)",
+        icon: <BookOpen className="w-5 h-5" />, color: "text-blue-400", bg: "bg-blue-400/20", border: "border-blue-500/30",
+        lightColor: [239, 246, 255], colorRGB: [59, 130, 246], borderColor: [147, 197, 253],
+        text: "Engineering Mathematics contributes 15% across ALL GATE papers — this is guaranteed scoring. Cover Linear Algebra, Calculus, ODEs, Numerical Methods, Probability & Statistics from NPTEL lectures. Use virtual calculator from Day 1. Build a formula sheet with all key results. Target: solve 10 maths PYQs daily from the previous 15 years. This investment returns 15 marks with relatively low effort compared to core subjects."
+      },
+      {
+        title: "Phase 2: Core Subject Mastery (Weeks 5–16)",
+        icon: <History className="w-5 h-5" />, color: "text-emerald-400", bg: "bg-emerald-400/20", border: "border-emerald-500/30",
+        lightColor: [236, 253, 245], colorRGB: [16, 185, 129], borderColor: [110, 231, 183],
+        text: "Cover core branch subjects in order of weightage (highest first). Use standard textbooks recommended by IIT professors — NPTEL video lectures are freely available for all subjects. Build detailed notes for every derivation and formula. Solve GATE PYQs chapter-by-chapter (not year-by-year) on GateOverflow.in — read every top-voted explanation. Mark all 'trap' questions where your intuition would be wrong."
+      },
+      {
+        title: "Phase 3: NAT Practice & Numerical Speed (Weeks 17–20)",
+        icon: <PenTool className="w-5 h-5" />, color: "text-purple-400", bg: "bg-purple-400/20", border: "border-purple-500/30",
+        lightColor: [255, 251, 235], colorRGB: [245, 158, 11], borderColor: [253, 211, 77],
+        text: "Numerical Answer Type (NAT) questions have NO negative marking — they are free marks if you can estimate. Practice 100+ NAT questions from all subjects. Use the official GATE virtual calculator for every practice session — different calculator than regular scientific calculators. Practice mixed 1-mark + 2-mark question sets under strict time conditions. Aim for completing 65 questions in 170 minutes (5 minutes for review)."
+      },
+      {
+        title: "Phase 4: Full CBT Mocks & General Aptitude (Weeks 21–24)",
+        icon: <Target className="w-5 h-5" />, color: "text-red-400", bg: "bg-red-400/20", border: "border-red-500/30",
+        lightColor: [254, 242, 242], colorRGB: [239, 68, 68], borderColor: [252, 165, 165],
+        text: "Attempt minimum 10 full-length branch-specific mocks under exact 3-hour CBT conditions. General Aptitude (15 marks): Verbal — RC, para completion, vocabulary; Quant — ratios, speed-distance, basic geometry. Score 13+/15 in GA — it's always predictable. Exam strategy: GA first (25 min) → 1-mark Qs (40 min) → 2-mark Qs (90 min) → review (15 min). Never leave a NAT unattempted."
+      }
+    ];
+  }
+
+  // ─── UPSC CSE ──────────────────────────────────────────────────────────────
+
+  if (exam === 'UPSC CSE' && sub === 'Prelims (GS)') {
+    return [
+      {
+        title: "Phase 1: NCERT Base + Static GS (Months 1–4)",
+        icon: <BookOpen className="w-5 h-5" />, color: "text-blue-400", bg: "bg-blue-400/20", border: "border-blue-500/30",
+        lightColor: [239, 246, 255], colorRGB: [59, 130, 246], borderColor: [147, 197, 253],
+        text: "Read ALL NCERTs: History (6–12), Geography (6–12), Polity (6–12), Economics (9–12), Science (6–10) — don't skip any. Then upgrade: Laxmikanth (Polity), NCERT 11–12 Physical & Human Geography + GC Leong, Shankar IAS Environment (mandatory), Mrunal Economy. Don't make notes from Laxmikanth directly — instead, annotate your NCERT. Create topic-wise flashcards (Anki or handwritten). Target: one NCERT reading completed per week."
+      },
+      {
+        title: "Phase 2: Current Affairs Integration (Months 2–12, Ongoing)",
+        icon: <History className="w-5 h-5" />, color: "text-emerald-400", bg: "bg-emerald-400/20", border: "border-emerald-500/30",
+        lightColor: [236, 253, 245], colorRGB: [16, 185, 129], borderColor: [110, 231, 183],
+        text: "Read The Hindu/Indian Express daily (40 minutes max). Focus sections: National, Editorial, Science & Tech, Environment, Economy. Use Vision IAS Monthly Current Affairs magazine. CRITICAL: Always link current affairs to static syllabus (e.g., a river pollution news → link to rivers, biodiversity, environmental laws). Maintain a Current Affairs notebook with cross-links to static topics. Solve previous year Prelims MCQs topic-by-topic on Insights IAS or Rau's IAS."
+      },
+      {
+        title: "Phase 3: MCQ Practice & Elimination Technique (Months 9–11)",
+        icon: <PenTool className="w-5 h-5" />, color: "text-purple-400", bg: "bg-purple-400/20", border: "border-purple-500/30",
+        lightColor: [255, 251, 235], colorRGB: [245, 158, 11], borderColor: [253, 211, 77],
+        text: "Solve ALL 25 years of GS Prelims PYQs — categorise them: repeated concepts appear again. Master the 'elimination technique': 100-question paper with 33% negative marking means you need 60+ correct out of 100 attempted for a safe cutoff (~105+ marks). Practice leaving questions you're less than 50% sure about. Identify your weak topics from PYQ analysis and do targeted revision. Do 5 topic tests per week minimum."
+      },
+      {
+        title: "Phase 4: Full Prelims Mock Tests (Months 11–12)",
+        icon: <Target className="w-5 h-5" />, color: "text-red-400", bg: "bg-red-400/20", border: "border-red-500/30",
+        lightColor: [254, 242, 242], colorRGB: [239, 68, 68], borderColor: [252, 165, 165],
+        text: "Attempt full Prelims mocks every weekend (Vision IAS, Insights IAS test series). Target: 110+ marks consistently before the actual exam (cutoff is usually ~92–105). After each mock: spend 3 hours on answer analysis — never just check score. Revise error topics from any source (Wikipedia, PIB, Mrunal) within 24 hours of the mock. Final 4 weeks: only PYQs, mock tests, and current affairs revision. No new topics."
+      }
+    ];
+  }
+
+  if (exam === 'UPSC CSE' && sub === 'Prelims (CSAT)') {
+    return [
+      {
+        title: "Phase 1: Assess Your CSAT Baseline (Week 1–2)",
+        icon: <BookOpen className="w-5 h-5" />, color: "text-blue-400", bg: "bg-blue-400/20", border: "border-blue-500/30",
+        lightColor: [239, 246, 255], colorRGB: [59, 130, 246], borderColor: [147, 197, 253],
+        text: "CSAT requires only 33% (66/200) to qualify — most aspirants already clear this comfortably. First: solve a full 2023/2022 CSAT paper under time conditions. If you score 80+, CSAT needs minimal effort — focus on GS. If below 80, identify your weak area: Reading Comprehension, Logical Reasoning, or Basic Numeracy. Plan accordingly — never over-invest time in CSAT at the cost of GS Paper 1."
+      },
+      {
+        title: "Phase 2: Reading Comprehension Mastery (Weeks 3–8)",
+        icon: <History className="w-5 h-5" />, color: "text-emerald-400", bg: "bg-emerald-400/20", border: "border-emerald-500/30",
+        lightColor: [236, 253, 245], colorRGB: [16, 185, 129], borderColor: [110, 231, 183],
+        text: "RC passages account for 30%+ of CSAT. The passages are dense (philosophy, science, economics). Practice: read 2 editorial articles daily and summarise the central idea in 2 sentences. Technique: read the questions BEFORE the passage, then skim for answers. Eliminate options that use extreme language ('always', 'never', 'only'). Practice RC sets from older CSAT papers — the UPSC style is unique and predictable once you recognise the patterns."
+      },
+      {
+        title: "Phase 3: Logical Reasoning & Decision Making (Weeks 4–10)",
+        icon: <PenTool className="w-5 h-5" />, color: "text-purple-400", bg: "bg-purple-400/20", border: "border-purple-500/30",
+        lightColor: [255, 251, 235], colorRGB: [245, 158, 11], borderColor: [253, 211, 77],
+        text: "Logical Reasoning: syllogisms (All-No-Some patterns), blood relations, sitting arrangements, direction puzzles, logical sequences. Practice R.S. Aggarwal Verbal & Non-Verbal Reasoning for 30 mins daily. Decision-Making questions test ethical reasoning — there's no shortcut, but reading Mains Ethics Integrity & Aptitude improves instinct significantly. Aim: solve 12 LR questions correctly within 15 minutes in practice."
+      },
+      {
+        title: "Phase 4: Numeracy & Mixed Full Papers (Weeks 8–12)",
+        icon: <Target className="w-5 h-5" />, color: "text-red-400", bg: "bg-red-400/20", border: "border-red-500/30",
+        lightColor: [254, 242, 242], colorRGB: [239, 68, 68], borderColor: [252, 165, 165],
+        text: "Basic Numeracy (Class X level): ratios, percentages, profit/loss, time-work, data interpretation (bar charts, pie charts, tables). Solve 20 DI questions daily. Focus on mental calculation tricks (percentages, fractions → decimals). Remember: 2-hour paper, 80 questions. Time allocation: RC (40 min) → LR (40 min) → Numeracy (30 min) → Buffer (10 min). Attempt only what you're sure of — 33% cutoff is forgiving, don't risk negative marking recklessly."
+      }
+    ];
+  }
+
+  if (exam === 'UPSC CSE' && sub === 'Mains (Essay)') {
+    return [
+      {
+        title: "Phase 1: Understanding Essay Anatomy & Types (Weeks 1–4)",
+        icon: <BookOpen className="w-5 h-5" />, color: "text-blue-400", bg: "bg-blue-400/20", border: "border-blue-500/30",
+        lightColor: [239, 246, 255], colorRGB: [59, 130, 246], borderColor: [147, 197, 253],
+        text: "UPSC Essay Paper = 2 essays × 125 marks each, 3 hours. Section A: Philosophical/Abstract (e.g., 'Forests are the lungs of the Earth'); Section B: Socio-Political/Concrete (e.g., 'The digital gender divide'). Study the difference: abstract essays need philosophical depth + personal voice; concrete essays need data + policy + multidimensional analysis. Read 20 top-rated previous UPSC essay answers (Insights IAS, TLP). Understand what examiners want: not knowledge, but WISDOM."
+      },
+      {
+        title: "Phase 2: Quotation Bank & Structural Framework (Weeks 3–8)",
+        icon: <History className="w-5 h-5" />, color: "text-emerald-400", bg: "bg-emerald-400/20", border: "border-emerald-500/30",
+        lightColor: [236, 253, 245], colorRGB: [16, 185, 129], borderColor: [110, 231, 183],
+        text: "Maintain a Quotation Bank: 5 quotes per major theme (Ethics, Democracy, Women, Technology, Environment, Governance, Economy). Memorise 3–4 relevant lines from Tagore, Gandhi, Ambedkar, and modern thinkers. Learn the UPSC-approved essay structure: Hook Introduction (quote/story/fact) → Thesis Statement → 4–5 Body Paragraphs (each with angle: historical, socio-economic, ethical, policy, global, future) → Balanced Conclusion. Practice writing 100-word paragraph outlines in 5 minutes for any topic."
+      },
+      {
+        title: "Phase 3: Weekly Essay Writing Practice (Months 3–8)",
+        icon: <PenTool className="w-5 h-5" />, color: "text-purple-400", bg: "bg-purple-400/20", border: "border-purple-500/30",
+        lightColor: [255, 251, 235], colorRGB: [245, 158, 11], borderColor: [253, 211, 77],
+        text: "Write one full essay every week (1000–1200 words) under 90-minute time conditions. Send to a mentor or coaching for evaluation. Evaluate yourself: Introduction (10) + Multidimensionality (40) + Flow & Coherence (20) + Conclusion (15) + Language (15) = 100. Common mistakes to eliminate: Not defining the key term in intro. Single-dimensional treatment (e.g., only economic angle). Vague conclusion without a call to action. Exceeding 1200 words without adding substance."
+      },
+      {
+        title: "Phase 4: Specialised Topics & Final Mock Essays (Months 9–12)",
+        icon: <Target className="w-5 h-5" />, color: "text-red-400", bg: "bg-red-400/20", border: "border-red-500/30",
+        lightColor: [254, 242, 242], colorRGB: [239, 68, 68], borderColor: [252, 165, 165],
+        text: "Practise 30 UPSC PYQ essays (last 15 years) — analyse which topics repeat and which angles are rewarded. Build 'essay templates' for high-probability themes: Women Empowerment, Democracy, Federalism, Technology & Ethics, Environment, India's Foreign Policy. In exam: spend 20 minutes outlining before writing. Never write beyond 1200 words — quality over quantity. Score 130+/250 to be competitive (75th percentile = ~128 marks in 2023)."
+      }
+    ];
+  }
+
+  if (exam === 'UPSC CSE' && (sub === 'Mains (GS 1)' || sub === 'Mains (GS 2)')) {
+    const gs = sub.includes('GS 1') ? '1' : '2';
+    const topics1 = "History, Heritage, Culture, Geography, Society";
+    const topics2 = "Polity, Governance, Social Justice, International Relations";
+    const topics = gs === '1' ? topics1 : topics2;
+    return [
+      {
+        title: `Phase 1: Source Mapping & NCERT Revision (Months 1–3)`,
+        icon: <BookOpen className="w-5 h-5" />, color: "text-blue-400", bg: "bg-blue-400/20", border: "border-blue-500/30",
+        lightColor: [239, 246, 255], colorRGB: [59, 130, 246], borderColor: [147, 197, 253],
+        text: `GS ${gs} covers: ${topics}. Start with NCERT revision — do NOT re-read, instead question-answer each chapter. Upgrade sources: ${gs === '1' ? 'Bipin Chandra (Modern History), Nitin Singhania (Art & Culture), G.C. Leong (Geography), Mrunal Yojana (Society)' : 'M. Laxmikanth (Polity), Mrunal Governance notes, Sriram IAS IR notes'}. Create topic-wise mindmaps. Every topic needs 3 layers: Concept → Current Context → Way Forward.`
+      },
+      {
+        title: "Phase 2: Answer Writing Framework (Months 3–7)",
+        icon: <History className="w-5 h-5" />, color: "text-emerald-400", bg: "bg-emerald-400/20", border: "border-emerald-500/30",
+        lightColor: [236, 253, 245], colorRGB: [16, 185, 129], borderColor: [110, 231, 183],
+        text: "UPSC Mains answers are evaluated on STRUCTURE + CONTENT + PRESENTATION. Formula for a 150-word answer (10 marks): Introduction (2–3 lines defining the concept) → Body Points (5–6 crisp points with sub-headings or arrows) → Conclusion (constitutional/policy/futuristic angle). For 250-word (15 marks) answers: add a diagram, case study, or constitutional article reference. Practice: write 2 answers daily from GS PYQs. Get them evaluated every fortnight."
+      },
+      {
+        title: "Phase 3: Current Affairs Integration & GS Mapping (Months 4–9)",
+        icon: <PenTool className="w-5 h-5" />, color: "text-purple-400", bg: "bg-purple-400/20", border: "border-purple-500/30",
+        lightColor: [255, 251, 235], colorRGB: [245, 158, 11], borderColor: [253, 211, 77],
+        text: `Map current affairs to GS ${gs} syllabus weekly. ${gs === '1' ? 'Example: Cyclone Biparjoy news → link to Geography (cyclone formation, Bay of Bengal warm current), History (coastal settlements), Society (disaster vulnerability of marginalised communities).' : 'Example: SC judgment on Governor powers → link to Polity (Art. 154, 163), Governance (cooperative federalism), IR (if judgment references international models).'} Maintain a Current Affairs + GS Syllabus crosslink notebook. Answer 3 GS PYQs per week integrating current examples.`
+      },
+      {
+        title: "Phase 4: Full GS Mains Mocks & Time Management (Months 9–12)",
+        icon: <Target className="w-5 h-5" />, color: "text-red-400", bg: "bg-red-400/20", border: "border-red-500/30",
+        lightColor: [254, 242, 242], colorRGB: [239, 68, 68], borderColor: [252, 165, 165],
+        text: `GS ${gs} is a 3-hour paper with 20 questions (approx. 250 + 150-word mix). Time = 9 min/question average. Practice writing under this exact constraint. Never attempt to write a perfect answer — a decent answer for all 20 beats 10 perfect answers. Final 2 months: mock full papers every Sunday. UPSC rewards those who cover all questions over those who write exhaustively for a few. Legibility matters — use a consistent pen and maintain neat paragraphs.`
+      }
+    ];
+  }
+
+  // ─── BPSC ──────────────────────────────────────────────────────────────────
+
+  if (exam === 'BPSC' && sub === 'Prelims (General Studies)') {
+    return [
+      {
+        title: "Phase 1: Bihar GS Static Foundation (Months 1–3)",
+        icon: <BookOpen className="w-5 h-5" />, color: "text-blue-400", bg: "bg-blue-400/20", border: "border-blue-500/30",
+        lightColor: [239, 246, 255], colorRGB: [59, 130, 246], borderColor: [147, 197, 253],
+        text: "BPSC Prelims is a single 150-question paper with 1/4 negative marking. Bihar-specific content = 30–40% of questions. Mandatory reading: Bihar Ki Rajvyavastha evam Arthvyavastha (Bihar Polity & Economy), Bihar Ka Itihas (Bihar History — Magadha, Maurya, Pal dynasty, Champaran, Quit India movement in Bihar), Bihar Geography (rivers, soil types, agro-climatic zones, districts). Standard GS: Lucent GK (all chapters) + Spectrum Modern History + NCERT Polity."
+      },
+      {
+        title: "Phase 2: Current Affairs — National + Bihar Focus (Months 2–12)",
+        icon: <History className="w-5 h-5" />, color: "text-emerald-400", bg: "bg-emerald-400/20", border: "border-emerald-500/30",
+        lightColor: [236, 253, 245], colorRGB: [16, 185, 129], borderColor: [110, 231, 183],
+        text: "Read Dainik Jagran or Hindustan (Hindi newspaper) daily for Bihar news. Supplement with Drishti IAS monthly current affairs magazine — Bihar special edition. Track: Bihar government schemes (Jal Jeevan Hariyali, Mukhyamantri Balika Cycle Yojana), Bihar Budget highlights, BPSC commission notifications, new districts/administrative changes, Bihar sports and cultural events. Questions on current CM, Governor, state cabinet decisions appear regularly."
+      },
+      {
+        title: "Phase 3: Science, GMA & Factual Memorisation (Months 4–9)",
+        icon: <PenTool className="w-5 h-5" />, color: "text-purple-400", bg: "bg-purple-400/20", border: "border-purple-500/30",
+        lightColor: [255, 251, 235], colorRGB: [245, 158, 11], borderColor: [253, 211, 77],
+        text: "General Science (25 marks): Physics (motion, electricity, light), Chemistry (reactions, acids-bases, periodic table), Biology (human body systems, diseases, nutrition) — all from NCERT Class 8–10. General Mental Ability (10 marks): Number series, analogy, classification, coding-decoding — R.S. Aggarwal (Hindi medium). BPSC Prelims is highly factual — memorise key dates, statistics, awards (national/state), books & authors (Bihar writers), sportspersons from Bihar."
+      },
+      {
+        title: "Phase 4: PYQ Marathon & BPSC Mock Tests (Months 9–12)",
+        icon: <Target className="w-5 h-5" />, color: "text-red-400", bg: "bg-red-400/20", border: "border-red-500/30",
+        lightColor: [254, 242, 242], colorRGB: [239, 68, 68], borderColor: [252, 165, 165],
+        text: "Solve ALL BPSC Prelims PYQs from 55th to 70th BPC — questions repeat concepts within 5-year cycles. Target: 100+ out of 150 for a safe Mains cutoff (safe score ~90–100). Attempt BPSC mock tests from Samyak IAS, Drishti IAS Hindi. Negative marking = 0.25 per wrong answer — skip if below 60% confidence. Exam strategy: Bihar GS (40 min) → History + Polity (30 min) → Science + GMA (25 min) → Current Affairs (25 min)."
+      }
+    ];
+  }
+
+  if (exam === 'BPSC' && sub === 'Mains (GS 1)') {
+    return [
+      {
+        title: "Phase 1: Modern History + Bihar Specific Events (Months 1–3)",
+        icon: <BookOpen className="w-5 h-5" />, color: "text-blue-400", bg: "bg-blue-400/20", border: "border-blue-500/30",
+        lightColor: [239, 246, 255], colorRGB: [59, 130, 246], borderColor: [147, 197, 253],
+        text: "BPSC GS 1 Mains is 300 marks, subjective, 3 hours. Historical content is critical: Revolt of 1857 (Kunwar Singh's role in Bihar), Birsa Munda & the Ulgulan movement, Champaran Satyagraha 1917 (Mahatma Gandhi's first Satyagraha — detailed answer), Gandhi-Irwin Pact, Quit India Movement in Bihar, Jayaprakash Narayan's role. Art & Culture: Madhubani painting (UNESCO recognition), Mithila folk arts, Patachitr, Chhath Puja (significance and origin). Ancient History: Maurya empire, Nalanda University, Vikramshila."
+      },
+      {
+        title: "Phase 2: Statistics + Current Affairs (Months 2–6)",
+        icon: <History className="w-5 h-5" />, color: "text-emerald-400", bg: "bg-emerald-400/20", border: "border-emerald-500/30",
+        lightColor: [236, 253, 245], colorRGB: [16, 185, 129], borderColor: [110, 231, 183],
+        text: "Statistics portion (72 marks): Data Interpretation from bar graphs, pie charts, mixed tables — questions directly use Bihar economic/census data. Practice DI sets from Bihar Economic Survey. Current Events section: major national/international events of the past year — focus on awards, summits, sports (Bihar representation), government schemes, UN reports related to India. Maintain a month-wise current affairs diary."
+      },
+      {
+        title: "Phase 3: Answer Writing — Bihar Context Integration (Months 4–8)",
+        icon: <PenTool className="w-5 h-5" />, color: "text-purple-400", bg: "bg-purple-400/20", border: "border-purple-500/30",
+        lightColor: [255, 251, 235], colorRGB: [245, 158, 11], borderColor: [253, 211, 77],
+        text: "BPSC examiners reward Bihar-specific examples. When writing about women empowerment → mention Mukhyamantri Kanya Utthan Yojana, Jeevika SHGs (Bihar's best performer nationally). When writing about agriculture → Bihar's success in fish production, makhana cultivation in Mithila. Structure: every 150-word answer needs at least 1 Bihar-specific example. Write 2 practice answers daily from BPSC Mains PYQs (ask a senior or join Drishti IAS answer evaluation)."
+      },
+      {
+        title: "Phase 4: Full Mains Mock Papers (Months 9–12)",
+        icon: <Target className="w-5 h-5" />, color: "text-red-400", bg: "bg-red-400/20", border: "border-red-500/30",
+        lightColor: [254, 242, 242], colorRGB: [239, 68, 68], borderColor: [252, 165, 165],
+        text: "BPSC GS 1 has about 15–18 questions in 3 hours. Time per question = 10–12 minutes maximum. Practice: attempt full mock papers in Hindi or English (your chosen medium) under strict time. Word limit: 150 words for short questions, 250 words for long questions — practice counting words. Final target: 160+/300 in GS 1 (Mains cutoff for interview call = ~600 out of 900 total GS marks). Hindi medium answer writing practice is particularly important — examiner familiarity with medium matters."
+      }
+    ];
+  }
+
+  if (exam === 'BPSC' && sub === 'Mains (GS 2)') {
+    return [
+      {
+        title: "Phase 1: Bihar Polity & Constitutional Framework (Months 1–4)",
+        icon: <BookOpen className="w-5 h-5" />, color: "text-blue-400", bg: "bg-blue-400/20", border: "border-blue-500/30",
+        lightColor: [239, 246, 255], colorRGB: [59, 130, 246], borderColor: [147, 197, 253],
+        text: "GS 2 covers Polity, Economy, Geography and Science. Polity: Bihar's political system (Bihar Vidhan Sabha, Vidhan Parishad structure, role of Governor), Panchayati Raj institutions in Bihar (3-tier structure, Mukhiya election, Gram Kachahri), Article 356 and its application in Bihar's history, Constitutional provisions for scheduled communities (Mahadalit in Bihar). Use Laxmikanth for foundation + Bihar-specific supplements."
+      },
+      {
+        title: "Phase 2: Bihar Economy & Geography (Months 2–6)",
+        icon: <History className="w-5 h-5" />, color: "text-emerald-400", bg: "bg-emerald-400/20", border: "border-emerald-500/30",
+        lightColor: [236, 253, 245], colorRGB: [16, 185, 129], borderColor: [110, 231, 183],
+        text: "Bihar Economy: Bihar Economic Survey (annual — read the latest), Special Category Status debate, NDA-Bihar coalition economic policies, BSDM (skill development), major industries (sugar mills, fertilizer, tourism). Bihar Geography: all 38 districts and their significance, Ganga and its tributaries (Son, Gandak, Kosi, Bagmati), fertile Gangetic plains, flood-prone areas (North Bihar), coal reserves (Jharkhand border). Agriculture: paddy, wheat, maize, litchi (Muzaffarpur GI tag), makhana."
+      },
+      {
+        title: "Phase 3: Science & Technology — Bihar Development Angle (Months 4–8)",
+        icon: <PenTool className="w-5 h-5" />, color: "text-purple-400", bg: "bg-purple-400/20", border: "border-purple-500/30",
+        lightColor: [255, 251, 235], colorRGB: [245, 158, 11], borderColor: [253, 211, 77],
+        text: "Science & Technology in Bihar context: e-Governance in Bihar (Sugam portal, RTI online), Har Ghar Nal Ka Jal scheme implementation, IIT Patna & NIT Patna research contributions, Bihar MSME sector and digital economy, space technology application in flood monitoring (ISRO partnership with Bihar government), telemedicine initiatives in rural Bihar. Standard Science & Tech: ISRO missions, biotech developments, AI in governance."
+      },
+      {
+        title: "Phase 4: Integrated Mocks & Critical Weak Area Focus (Months 9–12)",
+        icon: <Target className="w-5 h-5" />, color: "text-red-400", bg: "bg-red-400/20", border: "border-red-500/30",
+        lightColor: [254, 242, 242], colorRGB: [239, 68, 68], borderColor: [252, 165, 165],
+        text: "Write 3 full GS 2 mock papers under 3-hour conditions. Self-evaluate: Does every answer have a Bihar-specific example? Are you within word limits? Are your answers structured with intro-body-conclusion? For economy questions: always quote Bihar Economic Survey statistics and compare Bihar with national average. Target 155+/300 in GS 2. Combined GS 1 + GS 2 + Essay = 900 marks — you need ~600 for interview call (Bihar category)."
+      }
+    ];
+  }
+
+  if (exam === 'BPSC' && sub === 'Mains (Essay)') {
+    return [
+      {
+        title: "Phase 1: Understanding BPSC Essay Format (Weeks 1–4)",
+        icon: <BookOpen className="w-5 h-5" />, color: "text-blue-400", bg: "bg-blue-400/20", border: "border-blue-500/30",
+        lightColor: [239, 246, 255], colorRGB: [59, 130, 246], borderColor: [147, 197, 253],
+        text: "BPSC Essay paper = 300 marks total, 3 hours. Typically 3 essays: 1 general topic (100 marks), 1 Bihar-specific topic (100 marks), 1 social/economic issue (100 marks). Word limit: 700–900 words per essay. Unlike UPSC, BPSC examiners reward factual accuracy and Bihar relevance over philosophical depth. Read 10 high-scoring BPSC essay samples from Drishti IAS BPSC module. Note: Bihar cultural, administrative, and development topics appear almost every year."
+      },
+      {
+        title: "Phase 2: Bihar-Centric Knowledge Building (Months 1–4)",
+        icon: <History className="w-5 h-5" />, color: "text-emerald-400", bg: "bg-emerald-400/20", border: "border-emerald-500/30",
+        lightColor: [236, 253, 245], colorRGB: [16, 185, 129], borderColor: [110, 231, 183],
+        text: "Prepare 10 Bihar-specific essay templates: Bihar's flood challenge and solution, Bihar's economic transformation post-2005, Women empowerment in Bihar (Jeevika, Balika Cycle Yojana), Agriculture in Bihar — challenges and innovations, Tourism potential of Bihar (Bodh Gaya, Rajgir, Nalanda), Skill development and migration from Bihar, Bihar's education sector (School uniforms, free bicycles), Makhana and litchi — Bihar's agricultural pride, Role of Panchayati Raj in Bihar's development, Demographic dividend of Bihar."
+      },
+      {
+        title: "Phase 3: Weekly Essay Practice (Months 2–8)",
+        icon: <PenTool className="w-5 h-5" />, color: "text-purple-400", bg: "bg-purple-400/20", border: "border-purple-500/30",
+        lightColor: [255, 251, 235], colorRGB: [245, 158, 11], borderColor: [253, 211, 77],
+        text: "Write 2 essays per week under 50-minute time conditions (100 marks = 60 minutes in exam). Structure: Introduction with a relevant quote or statistic → 4 thematic paragraphs (historical, current state, challenges, way forward) → Conclusion with Bihar government policy reference. Language: Write in clear, simple Hindi (if Hindi medium) or formal English. Avoid literary language — BPSC examiners prefer precision over flourish. Get 4 essays evaluated by a mentor monthly."
+      },
+      {
+        title: "Phase 4: Final Polish & Anticipated Topic Preparation (Months 9–12)",
+        icon: <Target className="w-5 h-5" />, color: "text-red-400", bg: "bg-red-400/20", border: "border-red-500/30",
+        lightColor: [254, 242, 242], colorRGB: [239, 68, 68], borderColor: [252, 165, 165],
+        text: "Predict essay topics based on: current Bihar government flagship schemes, national schemes being implemented in Bihar, social issues in Bihar (migration, flood, education). Write 1 complete 3-essay mock paper per fortnight in exam conditions. Target: 180+/300 in Essay (top scorers average ~195). Bihar essay = guaranteed topic — prepare 5 Bihar development essays thoroughly. Always include: 3 government scheme names, 2 statistical data points, 1 constitutional provision. Presentation (legible handwriting, paragraphing) = 15–20 marks easily won or lost."
+      }
+    ];
+  }
+
+  // ─── BPSC QUALIFYING (Hindi) ───────────────────────────────────────────────
+
+  if (exam === 'BPSC (Qualifying)') {
+    return [
+      {
+        title: "Phase 1: Grammar Mastery — Foundation (Weeks 1–4)",
+        icon: <BookOpen className="w-5 h-5" />, color: "text-blue-400", bg: "bg-blue-400/20", border: "border-blue-500/30",
+        lightColor: [239, 246, 255], colorRGB: [59, 130, 246], borderColor: [147, 197, 253],
+        text: "You need only 30/100 to qualify — but don't risk it! BPSC General Hindi has 4 sections: Essay (30 marks), Grammar (30 marks), Syntax/Sentence Correction (25 marks), Précis/Sankshepan (15 marks). Grammar section: cover पर्यायवाची शब्द (synonyms — memorise 200 common pairs), विलोम शब्द (antonyms), मुहावरे एवं लोकोक्तियाँ (idioms — minimum 100), संधि-विच्छेद (sandhi — Vyanjan, Swar, Visarg types), समास (6 types with examples), तत्सम-तद्भव शब्द. Use BPSC Hindi Vyakaran by Drishti Publications."
+      },
+      {
+        title: "Phase 2: Sentence Correction & Syntax (Weeks 3–8)",
+        icon: <History className="w-5 h-5" />, color: "text-emerald-400", bg: "bg-emerald-400/20", border: "border-emerald-500/30",
+        lightColor: [236, 253, 245], colorRGB: [16, 185, 129], borderColor: [110, 231, 183],
+        text: "Syntax (Vaakvinyaas) section tests: लिंग (gender — masculine/feminine) correction, वचन (number — singular/plural) errors, काल (tense) correction, कारक (case markers — ने, को, से, के लिए corrections), Passive voice formation, Sentence order correction. Practice: take any 5 BPSC PYQ Hindi paper syntax sections. Typical errors: wrong kaaraka usage with verbs of giving/receiving, feminine plural irregulars, compound verb formation errors. Write 20 corrected sentences daily."
+      },
+      {
+        title: "Phase 3: Précis Writing (Sankshepan) Technique (Weeks 5–10)",
+        icon: <PenTool className="w-5 h-5" />, color: "text-purple-400", bg: "bg-purple-400/20", border: "border-purple-500/30",
+        lightColor: [255, 251, 235], colorRGB: [245, 158, 11], borderColor: [253, 211, 77],
+        text: "Précis = condense a passage to 1/3 its words + give a title. BPSC passage is typically 200–250 words → précis should be 65–85 words. Rules: (1) Use your OWN words — don't copy. (2) No first person ('I', 'we'). (3) Preserve ALL key ideas — cut only examples and repetitions. (4) Title = 3–5 words capturing the main theme. Practice: read 1 editorial per day from Dainik Bhaskar, write a 80-word précis, give a 4-word title. Practice 20 précis before the exam."
+      },
+      {
+        title: "Phase 4: Essay Writing & Past Paper Practice (Weeks 8–12)",
+        icon: <Target className="w-5 h-5" />, color: "text-red-400", bg: "bg-red-400/20", border: "border-red-500/30",
+        lightColor: [254, 242, 242], colorRGB: [239, 68, 68], borderColor: [252, 165, 165],
+        text: "Essay section (30 marks): 500-word essay on social/current topics. Topics repeat: डिजिटल इंडिया, महिला सशक्तिकरण, पर्यावरण प्रदूषण, युवाओं की भूमिका, भ्रष्टाचार. Prepare 5 template essays (intro → 3 body paragraphs → conclusion). Grammar check: avoid 'लिंग' errors in essay — common mistakes: 'सरकार ने निर्णय किया' (wrong) → 'सरकार ने निर्णय किया' (check verb agreement). BPSC PYQ Hindi papers available from 60th to 69th BPC — solve all. You need 30/100 — targeting 45–50 is comfortable and achievable in 8 weeks of honest effort."
+      }
+    ];
+  }
+
+  // ─── BEU ───────────────────────────────────────────────────────────────────
+
+  if (exam === 'BEU (Bihar Engg Univ)' && sub === 'B.Tech 1st Semester') {
+    return [
+      {
+        title: "Phase 1: Mathematics-I Deep Study (Weeks 1–4)",
+        icon: <BookOpen className="w-5 h-5" />, color: "text-blue-400", bg: "bg-blue-400/20", border: "border-blue-500/30",
+        lightColor: [239, 246, 255], colorRGB: [59, 130, 246], borderColor: [147, 197, 253],
+        text: "BEU Maths-I covers: Unit 1 (Matrices — rank, eigenvalues, Cayley-Hamilton theorem), Unit 2 (Differential Calculus — partial derivatives, Euler's theorem, maxima-minima), Unit 3 (Multiple Integrals — double/triple integrals, change of order), Unit 4 (Vector Calculus — gradient, divergence, curl, Green/Stokes/Gauss theorems). Use BS Grewal (primary) + BEU PYQ papers. CRITICAL: Solve the BEU 2018–2024 End-Sem papers — 60–70% questions repeat from PYQs directly. Derivations carry full marks."
+      },
+      {
+        title: "Phase 2: Engineering Physics — Concept + Numericals (Weeks 3–8)",
+        icon: <History className="w-5 h-5" />, color: "text-emerald-400", bg: "bg-emerald-400/20", border: "border-emerald-500/30",
+        lightColor: [236, 253, 245], colorRGB: [16, 185, 129], borderColor: [110, 231, 183],
+        text: "BEU Physics: Unit 1 (Mechanics — SHM, elasticity, Poisson's ratio), Unit 2 (Optics — interference, diffraction, polarisation — draw all diagrams), Unit 3 (Quantum Mechanics — de Broglie, Heisenberg, Schrödinger equation, particle in a box), Unit 4 (Solid State Physics — crystal structure, band theory, semiconductors), Unit 5 (Lasers & Fibre Optics — He-Ne laser construction). HC Verma for concepts. Every derivation must be practised with pen-and-paper — BEU awards marks step-by-step for derivations."
+      },
+      {
+        title: "Phase 3: Basic Electrical Engineering + Graphics (Weeks 6–12)",
+        icon: <PenTool className="w-5 h-5" />, color: "text-purple-400", bg: "bg-purple-400/20", border: "border-purple-500/30",
+        lightColor: [255, 251, 235], colorRGB: [245, 158, 11], borderColor: [253, 211, 77],
+        text: "BEE (Basic Electrical): DC circuits (KVL, KCL, Thevenin, Norton), AC circuits (phasors, power factor, resonance), Transformers (construction, EMF equation, efficiency), Three-phase systems (star-delta), Basics of DC motors. Use standard BEU notes + R.K. Rajput. Engineering Graphics: Orthographic projection (1st and 3rd angle), isometric views, section of solids — practice these problems on drawing sheets (A4). Exam will have 2 graphics questions worth 14 marks — these are guaranteed marks with practice."
+      },
+      {
+        title: "Phase 4: End-Semester Strategy — PYQ Focus (Weeks 10–16)",
+        icon: <Target className="w-5 h-5" />, color: "text-red-400", bg: "bg-red-400/20", border: "border-red-500/30",
+        lightColor: [254, 242, 242], colorRGB: [239, 68, 68], borderColor: [252, 165, 165],
+        text: "BEU End-Sem = 70 marks, 3 hours. Pattern: 10 questions × 7 marks each (attempt any 7). THIS IS KEY: you only need to prepare 7 out of 10 topics thoroughly — but prepare at least 8 to be safe. Strategy: identify the last 5 years' most-repeated questions per unit. These will repeat. Learn 3 answers per unit perfectly (2 derivations + 1 numerical). Presentation tip: draw a neat circuit/diagram for every answer even if not explicitly asked — examiners give grace marks for good diagrams. Target 55+ in End-Sem for an overall A grade."
+      }
+    ];
+  }
+
+  if (exam === 'BEU (Bihar Engg Univ)' && sub === 'B.Tech 2nd Semester') {
+    return [
+      {
+        title: "Phase 1: Mathematics-II & C Programming Foundation (Weeks 1–4)",
+        icon: <BookOpen className="w-5 h-5" />, color: "text-blue-400", bg: "bg-blue-400/20", border: "border-blue-500/30",
+        lightColor: [239, 246, 255], colorRGB: [59, 130, 246], borderColor: [147, 197, 253],
+        text: "Maths-II: Differential Equations (ODE — exact, linear, Bernoulli, Laplace transform method), Complex Variables (analytic functions, Cauchy-Riemann, contour integration, residue theorem), Series (Taylor, Maclaurin, Fourier series — must derive). C Programming: Start from scratch — data types, operators, control statements (if/else, for, while, switch), functions (recursion is heavily tested), arrays (1D/2D), pointers (pointer arithmetic, pointer to array), strings, structures. Write and compile programs by hand — BEU asks to trace programs and write outputs."
+      },
+      {
+        title: "Phase 2: Engineering Chemistry (Weeks 3–8)",
+        icon: <History className="w-5 h-5" />, color: "text-emerald-400", bg: "bg-emerald-400/20", border: "border-emerald-500/30",
+        lightColor: [236, 253, 245], colorRGB: [16, 185, 129], borderColor: [110, 231, 183],
+        text: "BEU Chemistry: Unit 1 (Atomic Structure — quantum numbers, shapes of orbitals, Hund's rules), Unit 2 (Chemical Bonding — VSEPR theory, hybridisation, MO theory for H2, O2, NO), Unit 3 (Electrochemistry — Nernst equation, electrode potentials, batteries, corrosion), Unit 4 (Polymers — addition/condensation polymerisation, Nylon, Bakelite, rubber), Unit 5 (Spectroscopy — UV-Vis, IR basics, application). Focus on numericals in electrochemistry — they appear every year. Memorise polymer structures and names."
+      },
+      {
+        title: "Phase 3: English Communication + Mid-Sem Preparation (Weeks 5–10)",
+        icon: <PenTool className="w-5 h-5" />, color: "text-purple-400", bg: "bg-purple-400/20", border: "border-purple-500/30",
+        lightColor: [255, 251, 235], colorRGB: [245, 158, 11], borderColor: [253, 211, 77],
+        text: "BEU English: Reading Comprehension (practice 10 passages), Writing — Letter writing (formal/informal), Report writing, Paragraph writing, Grammar — tenses, voice, narration, prepositions. Mid-Semester: BEU Mid-Sem = 30 marks (internal assessment). Prepare specifically for the teacher's 'favourite topics' — attend lectures for the last 2 weeks before Mid-Sem. Mid-Sem pattern: typically 3 questions × 10 marks (5 theory + 5 numerical). A strong Mid-Sem (25+/30) reduces End-Sem pressure significantly."
+      },
+      {
+        title: "Phase 4: Integrated Revision & End-Sem Execution (Weeks 11–16)",
+        icon: <Target className="w-5 h-5" />, color: "text-red-400", bg: "bg-red-400/20", border: "border-red-500/30",
+        lightColor: [254, 242, 242], colorRGB: [239, 68, 68], borderColor: [252, 165, 165],
+        text: "BEU End-Sem strategy: Solve 5 years of PYQs for every subject. Predicted high-probability topics: Laplace transform (Maths-II), File handling in C, Corrosion types (Chemistry), Polymer properties (Chemistry). Write practice answers checking: Is every step shown? Are units correct in numericals? Is a diagram included? BONUS: In BEU, writing partial answers for a question earns partial marks — NEVER leave a question blank. Even 2–3 correct lines fetch 2–3 marks. Target: 60+/100 for SGPA 8+ in 1st year."
+      }
+    ];
+  }
+
+  // ─── AKTU ──────────────────────────────────────────────────────────────────
+
+  if (exam === 'AKTU (UP)' && sub === 'B.Tech 1st Year') {
+    return [
+      {
+        title: "Phase 1: Mathematics-I + Engineering Physics (Weeks 1–5)",
+        icon: <BookOpen className="w-5 h-5" />, color: "text-blue-400", bg: "bg-blue-400/20", border: "border-blue-500/30",
+        lightColor: [239, 246, 255], colorRGB: [59, 130, 246], borderColor: [147, 197, 253],
+        text: "AKTU Maths-I (NEP 2024 Scheme): Module 1 — Matrices (eigenvalues, diagonalization), Module 2 — Differential Calculus (curvature, evolutes, asymptotes), Module 3 — Integral Calculus, Module 4 — ODE (Bernoulli, exact equations), Module 5 — Vector Calculus. Use R.K. Jain & S.R.K. Iyengar. AKTU Physics: Relativistic Mechanics (Lorentz transformation), Quantum Mechanics (Schrödinger's equation), Electromagnetic Fields (Maxwell's equations), Laser and Fibre Optics, Semiconductor Physics. Every unit = 10 marks typically in End-Sem paper."
+      },
+      {
+        title: "Phase 2: FME + Soft Skills Internal Assessment (Weeks 4–10)",
+        icon: <History className="w-5 h-5" />, color: "text-emerald-400", bg: "bg-emerald-400/20", border: "border-emerald-500/30",
+        lightColor: [236, 253, 245], colorRGB: [16, 185, 129], borderColor: [110, 231, 183],
+        text: "Fundamentals of Mechanical Engineering: Statics (FBD, friction, centroid), Simple Machines, Thermodynamics (Laws, Carnot cycle), Refrigeration basics. Internal Assessment (30 marks) is crucial — attend ALL classes (attendance marks), submit every assignment on time, perform well in class tests. AKTU internal marks policy: 10 marks attendance + 10 marks assignment + 10 marks class test. Losing internal marks is unrecoverable — a student with 30/30 internal needs only 40/70 in End-Sem to pass comfortably."
+      },
+      {
+        title: "Phase 3: AKTU Paper Pattern & PYQ Strategy (Weeks 8–14)",
+        icon: <PenTool className="w-5 h-5" />, color: "text-purple-400", bg: "bg-purple-400/20", border: "border-purple-500/30",
+        lightColor: [255, 251, 235], colorRGB: [245, 158, 11], borderColor: [253, 211, 77],
+        text: "AKTU End-Sem pattern: Section A (short answers 2 marks × 10), Section B (medium answers 7 marks × 5 — attempt 3), Section C (long answers 15 marks × 3 — attempt 2). KEY: Section A is the easiest 20 marks — never skip preparing for short answers. Download AKTU PYQs from aktu.ac.in official website (or Studynama). Every major topic repeats in Section B/C. Prepare at least 3 long-answer topics per subject thoroughly (derivation + diagram + application). AKTU questions are predictable — PYQ analysis + preparation = 55+ guaranteed."
+      },
+      {
+        title: "Phase 4: End-Semester Execution & Grace Mark Strategy (Weeks 14–18)",
+        icon: <Target className="w-5 h-5" />, color: "text-red-400", bg: "bg-red-400/20", border: "border-red-500/30",
+        lightColor: [254, 242, 242], colorRGB: [239, 68, 68], borderColor: [252, 165, 165],
+        text: "AKTU has an official grace mark provision: up to 7% grace marks per subject. So even if you score 28/70, grace can push to 35/70 (pass). However, NEVER rely on grace — target 45+ in each subject. Final 2 weeks strategy: Section A prep (definition, formula, 2-line answers for 30 topics), prepare 2 long answers per unit, practice writing under 3-hour conditions. Neat diagrams, labeled correctly, earn full Section C marks. After exam: AKTU allows re-checking (chakki) — apply if borderline fail."
+      }
+    ];
+  }
+
+  if (exam === 'AKTU (UP)' && sub === 'B.Tech CSE 2nd Year') {
+    return [
+      {
+        title: "Phase 1: Data Structures — Core Foundation (Weeks 1–5)",
+        icon: <BookOpen className="w-5 h-5" />, color: "text-blue-400", bg: "bg-blue-400/20", border: "border-blue-500/30",
+        lightColor: [239, 246, 255], colorRGB: [59, 130, 246], borderColor: [147, 197, 253],
+        text: "AKTU Data Structures: Arrays (operations, 2D arrays), Linked Lists (singly, doubly, circular — insertion/deletion algorithms), Stacks (applications: postfix evaluation, balancing parentheses), Queues (circular queue, priority queue), Trees (BST operations, AVL rotations, B-Tree basics), Graphs (BFS, DFS, Dijkstra, spanning trees — Prim/Kruskal), Sorting (Bubble, Selection, Insertion, Merge, Quick, Heap). Write and trace every algorithm by hand — AKTU asks to write code/algorithm and trace execution for specific inputs."
+      },
+      {
+        title: "Phase 2: Computer Organisation + Discrete Structures (Weeks 4–10)",
+        icon: <History className="w-5 h-5" />, color: "text-emerald-400", bg: "bg-emerald-400/20", border: "border-emerald-500/30",
+        lightColor: [236, 253, 245], colorRGB: [16, 185, 129], borderColor: [110, 231, 183],
+        text: "COA: Number systems (binary arithmetic, 2's complement, IEEE 754 floating point), Boolean algebra + Karnaugh Maps, Combinational circuits (adders, multiplexers), Sequential circuits (flip-flops, counters, registers), CPU organisation (ALU, control unit, instruction formats), Memory hierarchy (cache — mapping techniques, virtual memory), I/O organisation. DSTL: Propositional logic, Set theory, Relations (equivalence, partial order), Functions, Graph theory (trees, planarity, coloring), Lattices & Boolean algebra. These two subjects = 20% of total CSE 2nd year marks."
+      },
+      {
+        title: "Phase 3: Cyber Security + Internal Assessments (Weeks 6–12)",
+        icon: <PenTool className="w-5 h-5" />, color: "text-purple-400", bg: "bg-purple-400/20", border: "border-purple-500/30",
+        lightColor: [255, 251, 235], colorRGB: [245, 158, 11], borderColor: [253, 211, 77],
+        text: "Cyber Security: CIA triad, Threats & attacks (DoS, SQL injection, phishing), Cryptography (symmetric AES/DES, asymmetric RSA — key concepts, not implementation), Digital signatures, PKI, Firewalls, IDS/IPS, Security in web applications. Internal Assessment prep: AKTU internally awards 30 marks per subject — maintain 75%+ attendance (mandatory to appear in End-Sem), submit practical file neatly, prepare 5 viva questions per lab for Lab Oral exams. CSE 2nd year has 4–5 lab subjects — each lab file = 10–15 easy marks."
+      },
+      {
+        title: "Phase 4: AKTU CSE Exam Strategy — Pattern Mastery (Weeks 12–16)",
+        icon: <Target className="w-5 h-5" />, color: "text-red-400", bg: "bg-red-400/20", border: "border-red-500/30",
+        lightColor: [254, 242, 242], colorRGB: [239, 68, 68], borderColor: [252, 165, 165],
+        text: "AKTU CSE: Data Structures typically has 15 marks of pure algorithm-writing questions — practice writing BFS, DFS, AVL rotations, and Quick Sort in proper pseudocode or C-like syntax. Prepare Section A (short answers) for all 5 subjects: define 5 terms per unit, write 3 formulas per unit. For COA: draw ALU block diagram, cache mapping tables, and pipeline diagrams — these appear every year. Target CGPA 7.5+ in 2nd year (critical for placements). Solve AKTU PYQs 2018–2024 for DS, COA, and DSTL — 70% questions repeat."
+      }
+    ];
+  }
+
+  // ─── FALLBACK (generic university) ────────────────────────────────────────
+
+  return [
+    {
+      title: "Phase 1: Syllabus Mapping & Source Identification",
+      icon: <BookOpen className="w-5 h-5" />, color: "text-blue-400", bg: "bg-blue-400/20", border: "border-blue-500/30",
+      lightColor: [239, 246, 255], colorRGB: [59, 130, 246], borderColor: [147, 197, 253],
+      text: "Download the official university syllabus and mark every topic. Identify the weightage of each unit from PYQ analysis. Find the best study source per subject (NPTEL video, standard textbook, or teacher notes). Create a study timetable covering 80% of syllabus in the first 60% of available time, keeping 40% for revision and mocks. Never waste time on topics not in the syllabus."
+    },
+    {
+      title: "Phase 2: Previous Year Question Mastery",
+      icon: <History className="w-5 h-5" />, color: "text-emerald-400", bg: "bg-emerald-400/20", border: "border-emerald-500/30",
+      lightColor: [236, 253, 245], colorRGB: [16, 185, 129], borderColor: [110, 231, 183],
+      text: "University exams have highly repetitive questions — solve 5 years of PYQs for every subject. Categorise questions by unit and frequency. High-frequency questions must be prepared first. Practice writing answers within word/time limits. Focus on understanding the examiner's expected answer structure — introduction, step-by-step body, diagrams, and conclusion. This phase converts your knowledge into exam-ready answers."
+    },
+    {
+      title: "Phase 3: Diagram & Presentation Practice",
+      icon: <PenTool className="w-5 h-5" />, color: "text-purple-400", bg: "bg-purple-400/20", border: "border-purple-500/30",
+      lightColor: [255, 251, 235], colorRGB: [245, 158, 11], borderColor: [253, 211, 77],
+      text: "University examiners award significant marks for presentation quality. Practice: draw neat labelled diagrams, use sub-headings, write point-wise answers with proper spacing. For technical subjects: every long answer must include at least one diagram or block diagram. For theory subjects: use headings, bullet points, and a clear conclusion. Writing practice under timed conditions (3 hours) is critical — slow writers often lose marks not due to knowledge gaps but time management."
+    },
+    {
+      title: "Phase 4: Final Sprint & High-Yield Revision",
+      icon: <Target className="w-5 h-5" />, color: "text-red-400", bg: "bg-red-400/20", border: "border-red-500/30",
+      lightColor: [254, 242, 242], colorRGB: [239, 68, 68], borderColor: [252, 165, 165],
+      text: "Final 2 weeks: create a 'Last 48 Hours' revision sheet per subject — 10 key derivations, 5 most important diagrams, 10 definitions, 5 numerical formulas. University exams reward those who cover all questions over those who write perfect answers for 60% questions. Internal marks strategy: attend all classes in the final month, submit all assignments even if incomplete, secure maximum attendance marks — they are free guaranteed marks."
+    }
+  ];
+};
+
 const StrategyScreen = ({ navigate, context, userData }) => {
   const [selectedExam, setSelectedExam] = useState(context?.exam || userData?.targetExam || 'GATE');
   const [selectedSub, setSelectedSub] = useState(context?.sub || userData?.targetSub || 'Computer Science (CS)');
@@ -1287,11 +2371,10 @@ const StrategyScreen = ({ navigate, context, userData }) => {
     setIsFetching(false);
   };
 
-  // --- PDF DOWNLOAD FUNCTION ---
+  // --- PDF DOWNLOAD FUNCTION (FIXED ASYNC & AWAIT) ---
   const handleDownloadPDF = async () => {
     setIsDownloading(true);
 
-    // Load jsPDF dynamically
     const script = document.createElement('script');
     script.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
     document.head.appendChild(script);
@@ -1317,8 +2400,20 @@ const StrategyScreen = ({ navigate, context, userData }) => {
         if (y + needed > pageH - 20) addPage();
       };
 
+      // STRICT SANITIZER: Removes all weird AI symbols/spacing that breaks jsPDF
+      const sanitizeForPDF = (text) => {
+        if (!text) return "";
+        return String(text)
+          .replace(/[\u2018\u2019]/g, "'") 
+          .replace(/[\u201C\u201D]/g, '"') 
+          .replace(/[\u2013\u2014]/g, '-') 
+          .replace(/[^\x20-\x7E\n]/g, '')  
+          .replace(/  +/g, ' ')            
+          .trim();
+      };
+
       // --- HEADER BANNER ---
-      pdf.setFillColor(79, 70, 229); // Indigo
+      pdf.setFillColor(79, 70, 229); 
       pdf.rect(0, 0, pageW, 42, 'F');
 
       pdf.setFillColor(99, 102, 241, 0.3);
@@ -1351,7 +2446,7 @@ const StrategyScreen = ({ navigate, context, userData }) => {
       pdf.text('ASPIRANT', margin + 6, y + 8);
       pdf.setFont('helvetica', 'normal');
       pdf.setTextColor(55, 48, 163);
-      pdf.text(userData?.name || 'Student', margin + 6, y + 15);
+      pdf.text(sanitizeForPDF(userData?.name || 'Student'), margin + 6, y + 15);
 
       pdf.setFont('helvetica', 'bold');
       pdf.setTextColor(67, 56, 202);
@@ -1369,8 +2464,7 @@ const StrategyScreen = ({ navigate, context, userData }) => {
 
       y += 32;
 
-      // --- SECTION DIVIDER ---
-      const drawSectionHeader = (title, icon = '▶') => {
+      const drawSectionHeader = (title, icon = '>>') => {
         checkY(18);
         pdf.setFillColor(79, 70, 229);
         pdf.rect(margin, y, 4, 10, 'F');
@@ -1384,112 +2478,56 @@ const StrategyScreen = ({ navigate, context, userData }) => {
         y += 17;
       };
 
-      // Parse the AI strategy or use default phases
       const strategyContent = aiStrategy || null;
-      const phases = [
-        {
-          title: 'Phase 1: Foundation & Concept Building',
-          color: [59, 130, 246],
-          lightColor: [239, 246, 255],
-          borderColor: [147, 197, 253],
-          tips: [
-            `Study standard textbooks and NCERT/official sources for ${selectedExam} ${selectedSub}.`,
-            'Watch high-quality video lectures (NPTEL / Unacademy / Vision IAS) for each topic.',
-            'Make short handwritten notes: definitions, formulas, and important facts.',
-            'Complete one topic fully before moving to the next.',
-            'Duration: First 40% of total preparation time.'
-          ]
-        },
-        {
-          title: 'Phase 2: Targeted Practice & PYQs',
-          color: [16, 185, 129],
-          lightColor: [236, 253, 245],
-          borderColor: [110, 231, 183],
-          tips: [
-            `Solve last 10 years of ${selectedExam} Previous Year Questions (PYQs) topic-wise.`,
-            "Analyze each PYQ's explanation even when your answer is correct.",
-            'Identify the top 3 weakest topics and give them extra time.',
-            'Maintain an Error Log / Mistake Notebook for repeated mistakes.',
-            'Duration: Next 30% of total preparation time.'
-          ]
-        },
-        {
-          title: 'Phase 3: Revision Methodology',
-          color: [245, 158, 11],
-          lightColor: [255, 251, 235],
-          borderColor: [253, 211, 77],
-          tips: [
-            'Revise your short notes, formula book, and error log weekly.',
-            'Use spaced repetition: review older topics every 3–4 days.',
-            'Create mind maps for complex/interlinked topics.',
-            'Prioritize high-weightage sections based on the official exam pattern.',
-            'Duration: Next 20% of total preparation time.'
-          ]
-        },
-        {
-          title: 'Phase 4: Mock Test Simulation',
-          color: [239, 68, 68],
-          lightColor: [254, 242, 242],
-          borderColor: [252, 165, 165],
-          tips: [
-            `Simulate full ${selectedExam} exams in real exam conditions (no phone, timed).`,
-            'Attempt at least 5 full-length mocks before the actual exam.',
-            'After each mock: spend 2× the test time reviewing your mistakes.',
-            'Focus on time management and skipping strategy for difficult questions.',
-            'Duration: Final 10% of total preparation time (last 2–4 weeks).'
-          ]
-        }
-      ];
+      const phases = getDefaultStrategy(selectedExam, selectedSub);
 
-      drawSectionHeader('4-Phase Preparation Roadmap', '▶');
+      drawSectionHeader('4-Phase Preparation Roadmap', '>>');
 
       phases.forEach((phase, idx) => {
-        checkY(52);
+        pdf.setFontSize(8.5);
+        pdf.setFont('helvetica', 'normal');
+        
+        const cleanPhaseText = sanitizeForPDF(phase.text);
+        const lines = pdf.splitTextToSize(cleanPhaseText, contentW - 28); 
+        
+        const textHeight = lines.length * 4.5;
+        const boxHeight = Math.max(40, 20 + textHeight + 2);
+        checkY(boxHeight + 6);
 
-        // Phase card background
         pdf.setFillColor(...phase.lightColor);
-        pdf.roundedRect(margin, y, contentW, 48, 3, 3, 'F');
+        pdf.roundedRect(margin, y, contentW, boxHeight, 3, 3, 'F');
         pdf.setDrawColor(...phase.borderColor);
         pdf.setLineWidth(0.4);
-        pdf.roundedRect(margin, y, contentW, 48, 3, 3, 'S');
+        pdf.roundedRect(margin, y, contentW, boxHeight, 3, 3, 'S');
 
-        // Left color bar
-        pdf.setFillColor(...phase.color);
-        pdf.roundedRect(margin, y, 4, 48, 2, 2, 'F');
+        pdf.setFillColor(...phase.colorRGB);
+        pdf.roundedRect(margin, y, 4, boxHeight, 2, 2, 'F');
 
-        // Phase number badge
-        pdf.setFillColor(...phase.color);
+        pdf.setFillColor(...phase.colorRGB);
         pdf.circle(margin + 14, y + 9, 6, 'F');
         pdf.setTextColor(255, 255, 255);
         pdf.setFontSize(9);
         pdf.setFont('helvetica', 'bold');
         pdf.text(`${idx + 1}`, margin + 14, y + 12, { align: 'center' });
 
-        // Phase title
         pdf.setFontSize(10);
         pdf.setFont('helvetica', 'bold');
         pdf.setTextColor(30, 27, 75);
-        pdf.text(phase.title, margin + 24, y + 10);
+        pdf.text(sanitizeForPDF(phase.title), margin + 24, y + 10);
 
-        // Tips
         pdf.setFontSize(8.5);
         pdf.setFont('helvetica', 'normal');
         pdf.setTextColor(71, 85, 105);
+        
+        pdf.text(lines, margin + 12, y + 18);
 
-        let tipY = y + 18;
-        phase.tips.forEach((tip, tIdx) => {
-          const lines = pdf.splitTextToSize(`• ${tip}`, contentW - 16);
-          pdf.text(lines, margin + 10, tipY);
-          tipY += lines.length * 4.5;
-        });
-
-        y += 54;
+        y += boxHeight + 6; 
       });
 
-      // --- AI STRATEGY SECTION (if fetched) ---
+      // --- AI STRATEGY SECTION ---
       if (strategyContent) {
         checkY(20);
-        drawSectionHeader('Live AI Expert Strategy', '★');
+        drawSectionHeader('Live Expert Practice Strategy', '>>');
 
         pdf.setFillColor(250, 245, 255);
         pdf.roundedRect(margin, y, contentW, 8, 2, 2, 'F');
@@ -1499,41 +2537,41 @@ const StrategyScreen = ({ navigate, context, userData }) => {
         pdf.text('AI-generated personalized advice based on your exam pattern:', margin + 4, y + 5.5);
         y += 13;
 
-        const cleanStrategy = strategyContent
-          .replace(/\*\*/g, '')
-          .replace(/\*/g, '')
-          .replace(/#{1,3} /g, '')
-          .trim();
+        const cleanStrategy = sanitizeForPDF(
+          strategyContent.replace(/\*\*/g, '').replace(/\*/g, '').replace(/#{1,3} /g, '')
+        );
 
-        const stratLines = pdf.splitTextToSize(cleanStrategy, contentW - 8);
-        pdf.setFontSize(9);
-        pdf.setFont('helvetica', 'normal');
-        pdf.setTextColor(44, 44, 44);
+        const strategyParagraphs = cleanStrategy.split('\n');
+        
+        strategyParagraphs.forEach(para => {
+           if (!para.trim()) return;
+           
+           pdf.setFontSize(9);
+           const lines = pdf.splitTextToSize(para.trim(), contentW - 12);
+           const paraHeight = lines.length * 4.5;
+           checkY(paraHeight + 4);
 
-        stratLines.forEach((line) => {
-          checkY(6);
-          const isPhaseHead = /^Phase \d/i.test(line.trim());
-          if (isPhaseHead) {
-            pdf.setFont('helvetica', 'bold');
-            pdf.setTextColor(79, 70, 229);
-          } else {
-            pdf.setFont('helvetica', 'normal');
-            pdf.setTextColor(44, 44, 44);
-          }
-          pdf.text(line, margin + 4, y);
-          y += line.trim() === '' ? 4 : 5.5;
+           const isPhaseHead = /^Phase \d/i.test(para.trim());
+           if (isPhaseHead) {
+             pdf.setFont('helvetica', 'bold');
+             pdf.setTextColor(79, 70, 229);
+           } else {
+             pdf.setFont('helvetica', 'normal');
+             pdf.setTextColor(44, 44, 44);
+           }
+           
+           pdf.text(lines, margin + 4, y);
+           y += paraHeight + 1.5;
         });
-
-        y += 8;
+        y += 6;
       }
 
       // --- SYLLABUS QUICK REFERENCE ---
       checkY(20);
-      drawSectionHeader('Syllabus Weightage Quick Reference', '◈');
+      drawSectionHeader('Syllabus Weightage Quick Reference', '>>');
 
       const syllabus = SYLLABUS_DATA[selectedExam]?.[selectedSub] || [];
       if (syllabus.length > 0) {
-        // Table header
         pdf.setFillColor(79, 70, 229);
         pdf.rect(margin, y, contentW, 8, 'F');
         pdf.setTextColor(255, 255, 255);
@@ -1552,10 +2590,9 @@ const StrategyScreen = ({ navigate, context, userData }) => {
           pdf.setTextColor(44, 44, 44);
           pdf.setFontSize(8);
           pdf.setFont('helvetica', 'normal');
-          const topicText = pdf.splitTextToSize(String(item.section), contentW - 40);
+          const topicText = pdf.splitTextToSize(sanitizeForPDF(item.section), contentW - 40);
           pdf.text(topicText[0], margin + 4, y + 5);
 
-          // Weightage bar
           const wPct = Math.min(1, (item.weight || 10) / 30);
           pdf.setFillColor(199, 210, 254);
           pdf.roundedRect(margin + contentW - 40, y + 2, 30, 3.5, 1, 1, 'F');
@@ -1573,13 +2610,13 @@ const StrategyScreen = ({ navigate, context, userData }) => {
 
       // --- DAILY SCHEDULE TEMPLATE ---
       checkY(65);
-      drawSectionHeader('Recommended Daily Study Template', '⏱');
+      drawSectionHeader('Recommended Daily Study Template', '>>');
 
       const scheduleItems = [
-        { time: '6:00 – 8:00 AM',  activity: 'Morning Session: New Concept Study (fresh mind)', color: [59, 130, 246], light: [239, 246, 255] },
-        { time: '10:00 – 12:00 PM', activity: 'Practice Session: PYQs & Topic-wise Tests',        color: [16, 185, 129], light: [236, 253, 245] },
-        { time: '4:00 – 6:00 PM',  activity: 'Revision Session: Short Notes & Error Log',         color: [245, 158, 11], light: [255, 251, 235] },
-        { time: '9:00 – 10:00 PM', activity: 'Wrap-up: Plan tomorrow + 20-min light reading',     color: [139, 92, 246], light: [245, 243, 255] },
+        { time: '6:00 - 8:00 AM',  activity: 'Morning Session: New Concept Study (fresh mind)', color: [59, 130, 246], light: [239, 246, 255] },
+        { time: '10:00 - 12:00 PM', activity: 'Practice Session: PYQs & Topic-wise Tests',        color: [16, 185, 129], light: [236, 253, 245] },
+        { time: '4:00 - 6:00 PM',  activity: 'Revision Session: Short Notes & Error Log',         color: [245, 158, 11], light: [255, 251, 235] },
+        { time: '9:00 - 10:00 PM', activity: 'Wrap-up: Plan tomorrow + 20-min light reading',     color: [139, 92, 246], light: [245, 243, 255] },
       ];
 
       scheduleItems.forEach((s) => {
@@ -1610,7 +2647,7 @@ const StrategyScreen = ({ navigate, context, userData }) => {
         pdf.setFontSize(8);
         pdf.setFont('helvetica', 'normal');
         pdf.setTextColor(100, 116, 139);
-        pdf.text(`EduForge Practice Strategy  |  ${selectedExam} – ${selectedSub}`, margin, pageH - 5.5);
+        pdf.text(`EduForge Practice Strategy  |  ${selectedExam} - ${selectedSub}`, margin, pageH - 5.5);
         pdf.text(`Page ${p} of ${totalPages}`, pageW - margin, pageH - 5.5, { align: 'right' });
       }
 
@@ -1633,7 +2670,7 @@ const StrategyScreen = ({ navigate, context, userData }) => {
             <ArrowLeft className="w-4 h-4 mr-1" /> Go Back
           </button>
           <h1 className="text-3xl md:text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-amber-400 to-orange-500 flex items-center">
-            <Lightbulb className="w-8 h-8 mr-3 text-amber-400" /> AI Practice Strategy
+            <Lightbulb className="w-8 h-8 mr-3 text-amber-400" /> Practice Strategy
           </h1>
           <p className="text-slate-400 mt-2 text-lg">Phase-by-phase customized preparation methodology.</p>
         </div>
@@ -1690,25 +2727,13 @@ const StrategyScreen = ({ navigate, context, userData }) => {
               <><Zap className="w-5 h-5 mr-2" /> Generate Personalized AI Strategy</>
             )}
           </button>
-
-          <button
-            onClick={handleDownloadPDF}
-            disabled={isDownloading}
-            className="px-8 py-4 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-bold rounded-xl transition-all shadow-lg shadow-indigo-500/25 flex items-center justify-center transform hover:-translate-y-1 active:scale-95 disabled:opacity-70 disabled:scale-100"
-          >
-            {isDownloading ? (
-              <><div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin mr-3"></div> Building PDF...</>
-            ) : (
-              <><DownloadCloud className="w-5 h-5 mr-2" /> {aiStrategy ? 'Download Full Strategy PDF' : 'Download Default Strategy PDF'}</>
-            )}
-          </button>
         </div>
 
         {aiStrategy ? (
           <MotionDiv animation="fade-in" className="bg-slate-950/50 border border-amber-500/30 rounded-2xl p-6 md:p-8 mb-8">
             <div className="flex flex-col sm:flex-row justify-between items-start gap-4 mb-4">
               <h3 className="text-xl font-bold text-amber-400 flex items-center">
-                <Brain className="w-6 h-6 mr-2" /> Live Expert AI Strategy
+                <Brain className="w-6 h-6 mr-2" /> Live Expert Practice Strategy
               </h3>
               <button
                 onClick={handleDownloadPDF}
@@ -1724,22 +2749,24 @@ const StrategyScreen = ({ navigate, context, userData }) => {
           </MotionDiv>
         ) : null}
 
-        {/* DEFAULT 4-PHASE STRATEGY CARDS */}
+        {/* DYNAMIC 4-PHASE STRATEGY CARDS */}
         <div className="space-y-6 relative">
           <div className="absolute left-6 top-8 bottom-8 w-0.5 bg-slate-800 hidden md:block"></div>
-          {[
-            { title: "Phase 1: Concept Building & Foundation", icon: <BookOpen className="w-5 h-5" />, color: "text-blue-400", bg: "bg-blue-400/20", border: "border-blue-500/30", text: "Focus entirely on standard textbooks and high-quality video lectures. Do not rush to solve complex problems until the base concept is crystal clear. Make short notes specifically containing definitions, formulas, and edge cases." },
-            { title: "Phase 2: Targeted Practice & PYQs", icon: <History className="w-5 h-5" />, color: "text-emerald-400", bg: "bg-emerald-400/20", border: "border-emerald-500/30", text: `Solve the last 10 years of ${selectedExam} Previous Year Questions (PYQs). Analyze each question's explanation, even if your answer was correct. This reveals the examiner's mindset and helps identify the most frequently tested subtopics in ${selectedSub}.` },
-            { title: "Phase 3: Topic-wise Micro Tests", icon: <PenTool className="w-5 h-5" />, color: "text-purple-400", bg: "bg-purple-400/20", border: "border-purple-500/30", text: "Take short, topic-wise tests immediately after finishing a module. Use this phase to identify silly mistakes and time-consuming question traps. Strictly adhere to the negative marking scheme to build accuracy." },
-            { title: "Phase 4: Full-Length Simulation", icon: <Target className="w-5 h-5" />, color: "text-red-400", bg: "bg-red-400/20", border: "border-red-500/30", text: "During the final month, simulate the exact exam environment. For Mains/Descriptive: write full-length answers focusing on structure (Intro, Body, Conclusion). For Prelims/GATE: take 3-hour CBT mocks to perfect time management and pressure handling." }
-          ].map((phase, idx) => (
+          {getDefaultStrategy(selectedExam, selectedSub).map((phase, idx) => (
             <MotionDiv key={idx} delay={idx * 100} animation="fade-up" className="relative z-10 flex flex-col md:flex-row items-start">
               <div className={`w-12 h-12 rounded-xl flex items-center justify-center shrink-0 mb-4 md:mb-0 md:mr-6 ${phase.bg} ${phase.color} border ${phase.border} shadow-lg`}>
                 {phase.icon}
               </div>
               <div className="bg-slate-950 border border-slate-800 rounded-2xl p-5 flex-1 hover:border-slate-600 transition-colors">
                 <h3 className={`text-lg font-bold mb-2 ${phase.color}`}>{phase.title}</h3>
-                <p className="text-slate-400 text-sm leading-relaxed">{phase.text}</p>
+                
+                {/* Splitting points logically for better UI display */}
+                <div className="text-slate-400 text-sm leading-relaxed space-y-1">
+                  {phase.text.split('•').filter(Boolean).map((pt, i) => (
+                    <p key={i}>• {pt.trim()}</p>
+                  ))}
+                </div>
+
               </div>
             </MotionDiv>
           ))}
@@ -1751,7 +2778,7 @@ const StrategyScreen = ({ navigate, context, userData }) => {
           <div>
             <p className="text-sm font-bold text-indigo-300 mb-1">Offline Access Tip</p>
             <p className="text-xs text-slate-400 leading-relaxed">
-              Click <span className="text-indigo-400 font-bold">"Download Strategy PDF"</span> to save a beautifully formatted practice strategy to your device. The PDF includes all 4 phases, syllabus weightage table, daily schedule template, and your AI-generated advice — perfect for offline reference.
+              Click <span className="text-indigo-400 font-bold">"Download Strategy PDF"</span> to save a beautifully formatted practice strategy to your device. The PDF includes all 4 phases tailored to your exam, syllabus weightage table, daily schedule template, and your AI-generated advice — perfect for offline reference.
             </p>
           </div>
         </div>
@@ -1759,11 +2786,10 @@ const StrategyScreen = ({ navigate, context, userData }) => {
     </div>
   );
 };
-
 const SyllabusScreen = ({ navigate, context, userData }) => {
   const [selectedExam, setSelectedExam] = useState(context?.exam || userData?.targetExam || 'GATE');
   const [selectedSub, setSelectedSub] = useState(context?.sub || userData?.targetSub || 'Computer Science (CS)');
-  const [viewingPdf, setViewingPdf] = useState(null);
+  const [isDownloading, setIsDownloading] = useState(false);
 
   const exams = Object.keys(SYLLABUS_DATA);
   const subs = SYLLABUS_DATA[selectedExam] ? Object.keys(SYLLABUS_DATA[selectedExam]) : [];
@@ -1775,6 +2801,205 @@ const SyllabusScreen = ({ navigate, context, userData }) => {
   }, [selectedExam, subs, selectedSub]);
 
   const currentSyllabus = SYLLABUS_DATA[selectedExam]?.[selectedSub] || [];
+
+  const handleDownloadSyllabusPDF = async () => {
+    setIsDownloading(true);
+
+    if (!window.jspdf) {
+      const script = document.createElement('script');
+      script.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
+      document.head.appendChild(script);
+      await new Promise((resolve) => { script.onload = resolve; });
+    }
+
+    try {
+      const { jsPDF } = window.jspdf;
+      const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+
+      const pageW = 210;
+      const pageH = 297;
+      const margin = 15;
+      const contentW = pageW - margin * 2;
+      let y = 0;
+
+      const sanitize = (text) =>
+        String(text || '')
+          .replace(/[\u2018\u2019]/g, "'")
+          .replace(/[\u201C\u201D]/g, '"')
+          .replace(/[\u2013\u2014]/g, '-')
+          .replace(/[^\x20-\x7E\n]/g, '')
+          .replace(/  +/g, ' ')
+          .trim();
+
+      const checkY = (needed = 10) => {
+        if (y + needed > pageH - 18) {
+          pdf.addPage();
+          y = 20;
+        }
+      };
+
+      // HEADER
+      pdf.setFillColor(67, 56, 202);
+      pdf.rect(0, 0, pageW, 44, 'F');
+      pdf.setFillColor(99, 102, 241, 0.25);
+      pdf.circle(185, -8, 38, 'F');
+      pdf.circle(-8, 40, 22, 'F');
+
+      pdf.setTextColor(255, 255, 255);
+      pdf.setFontSize(20);
+      pdf.setFont('helvetica', 'bold');
+      pdf.text('EduForge — Detailed Syllabus', margin, 16);
+
+      pdf.setFontSize(10);
+      pdf.setFont('helvetica', 'normal');
+      pdf.setTextColor(199, 210, 254);
+      pdf.text(`${selectedExam}  |  ${selectedSub}`, margin, 26);
+      pdf.text(`Generated: ${new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })}`, margin, 34);
+
+      y = 54;
+
+      // EXAM PATTERN TABLE
+      const examMeta = EXAM_METADATA[selectedExam];
+      if (examMeta) {
+        checkY(18);
+        pdf.setFillColor(67, 56, 202);
+        pdf.rect(margin, y, 4, 9, 'F');
+        pdf.setFontSize(12);
+        pdf.setFont('helvetica', 'bold');
+        pdf.setTextColor(30, 27, 75);
+        pdf.text('Exam Pattern Overview', margin + 8, y + 7);
+        y += 14;
+
+        pdf.setFillColor(67, 56, 202);
+        pdf.rect(margin, y, contentW, 8, 'F');
+        pdf.setTextColor(255, 255, 255);
+        pdf.setFontSize(8.5);
+        pdf.setFont('helvetica', 'bold');
+        pdf.text('Stage', margin + 3, y + 5.5);
+        pdf.text('Type', margin + 55, y + 5.5);
+        pdf.text('Marks', margin + 115, y + 5.5);
+        pdf.text('Duration', margin + 145, y + 5.5);
+        y += 8;
+
+        examMeta.pattern.forEach((row, idx) => {
+          checkY(16);
+          const rowBg = idx % 2 === 0 ? [238, 242, 255] : [255, 255, 255];
+          pdf.setFillColor(...rowBg);
+          pdf.rect(margin, y, contentW, 14, 'F');
+
+          pdf.setFontSize(8);
+          pdf.setFont('helvetica', 'bold');
+          pdf.setTextColor(44, 44, 44);
+          pdf.text(sanitize(row.stage), margin + 3, y + 5);
+          pdf.setFont('helvetica', 'normal');
+          pdf.setFontSize(7.5);
+          pdf.setTextColor(80, 80, 80);
+          pdf.text(sanitize(row.type), margin + 55, y + 5);
+          pdf.setFont('helvetica', 'bold');
+          pdf.setTextColor(16, 185, 129);
+          pdf.text(sanitize(row.marks), margin + 115, y + 5);
+          pdf.setFont('helvetica', 'normal');
+          pdf.setTextColor(80, 80, 80);
+          pdf.text(sanitize(row.duration), margin + 145, y + 5);
+
+          pdf.setFontSize(7);
+          pdf.setTextColor(100, 116, 139);
+          const detailLines = pdf.splitTextToSize(sanitize(row.details), contentW - 6);
+          pdf.text(detailLines[0], margin + 3, y + 11);
+          y += 14;
+        });
+        y += 8;
+      }
+
+      // SYLLABUS TOPICS
+      checkY(18);
+      pdf.setFillColor(67, 56, 202);
+      pdf.rect(margin, y, 4, 9, 'F');
+      pdf.setFontSize(12);
+      pdf.setFont('helvetica', 'bold');
+      pdf.setTextColor(30, 27, 75);
+      pdf.text('Topic-wise Syllabus Breakdown', margin + 8, y + 7);
+      y += 14;
+
+      currentSyllabus.forEach((item, idx) => {
+        const topicsText = sanitize(item.topics);
+        const topicLines = pdf.splitTextToSize(topicsText, contentW - 50);
+        const boxH = Math.max(22, 14 + topicLines.length * 4.5);
+        checkY(boxH + 5);
+
+        const cardBg = idx % 2 === 0 ? [238, 242, 255] : [248, 250, 252];
+        pdf.setFillColor(...cardBg);
+        pdf.roundedRect(margin, y, contentW, boxH, 3, 3, 'F');
+        pdf.setDrawColor(199, 210, 254);
+        pdf.setLineWidth(0.3);
+        pdf.roundedRect(margin, y, contentW, boxH, 3, 3, 'S');
+
+        pdf.setFillColor(67, 56, 202);
+        pdf.roundedRect(margin, y, 3, boxH, 1, 1, 'F');
+
+        pdf.setFillColor(67, 56, 202);
+        pdf.circle(margin + 14, y + 8, 5, 'F');
+        pdf.setTextColor(255, 255, 255);
+        pdf.setFontSize(8);
+        pdf.setFont('helvetica', 'bold');
+        pdf.text(`${idx + 1}`, margin + 14, y + 11, { align: 'center' });
+
+        pdf.setFontSize(10);
+        pdf.setFont('helvetica', 'bold');
+        pdf.setTextColor(30, 27, 75);
+        pdf.text(sanitize(item.section), margin + 23, y + 9);
+
+        if (item.weight) {
+          const badgeX = margin + contentW - 26;
+          pdf.setFillColor(16, 185, 129, 0.15);
+          pdf.roundedRect(badgeX, y + 3, 22, 7, 2, 2, 'F');
+          pdf.setFontSize(8);
+          pdf.setFont('helvetica', 'bold');
+          pdf.setTextColor(5, 150, 105);
+          pdf.text(`${item.weight}%`, badgeX + 11, y + 8, { align: 'center' });
+        }
+
+        pdf.setFontSize(8);
+        pdf.setFont('helvetica', 'normal');
+        pdf.setTextColor(71, 85, 105);
+        pdf.text(topicLines, margin + 23, y + 15);
+
+        if (item.source) {
+          pdf.setFontSize(7);
+          pdf.setFont('helvetica', 'italic');
+          pdf.setTextColor(99, 102, 241);
+          pdf.text(`Source: ${sanitize(item.source)}`, margin + 23, y + boxH - 3);
+        }
+
+        y += boxH + 5;
+      });
+
+      // FOOTER
+      const totalPages = pdf.internal.getNumberOfPages();
+      for (let p = 1; p <= totalPages; p++) {
+        pdf.setPage(p);
+        pdf.setFillColor(245, 244, 255);
+        pdf.rect(0, pageH - 13, pageW, 13, 'F');
+        pdf.setDrawColor(199, 210, 254);
+        pdf.setLineWidth(0.3);
+        pdf.line(0, pageH - 13, pageW, pageH - 13);
+        pdf.setFontSize(7.5);
+        pdf.setFont('helvetica', 'normal');
+        pdf.setTextColor(100, 116, 139);
+        pdf.text(`EduForge Syllabus  |  ${selectedExam} — ${selectedSub}`, margin, pageH - 5);
+        pdf.text(`Page ${p} of ${totalPages}`, pageW - margin, pageH - 5, { align: 'right' });
+      }
+
+      const safeExam = selectedExam.replace(/[^a-zA-Z0-9]/g, '_');
+      const safeSub = selectedSub.replace(/[^a-zA-Z0-9]/g, '_');
+      pdf.save(`EduForge_Syllabus_${safeExam}_${safeSub}.pdf`);
+    } catch (err) {
+      console.error('PDF Error:', err);
+      alert('PDF generation failed. Please try again.');
+    } finally {
+      setIsDownloading(false);
+    }
+  };
 
   return (
     <div className="max-w-5xl mx-auto pb-20">
@@ -1788,6 +3013,18 @@ const SyllabusScreen = ({ navigate, context, userData }) => {
           </h1>
           <p className="text-slate-400 mt-2 text-lg">Official examination topics and breakdown.</p>
         </div>
+
+        <button
+          onClick={handleDownloadSyllabusPDF}
+          disabled={isDownloading}
+          className="flex items-center px-6 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-bold rounded-xl transition-all shadow-lg shadow-indigo-500/25 transform hover:-translate-y-1 active:scale-95 disabled:opacity-70 disabled:scale-100 whitespace-nowrap"
+        >
+          {isDownloading ? (
+            <><div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin mr-3"></div> Generating PDF...</>
+          ) : (
+            <><DownloadCloud className="w-5 h-5 mr-2" /> Download Syllabus PDF</>
+          )}
+        </button>
       </MotionDiv>
 
       <MotionDiv delay={100} className="bg-slate-900 border border-slate-800 rounded-3xl p-6 md:p-8 shadow-xl mb-12">
@@ -1823,12 +3060,6 @@ const SyllabusScreen = ({ navigate, context, userData }) => {
               <h3 className="text-xl font-bold text-white flex items-center">
                 <Target className="w-5 h-5 mr-2 text-indigo-400" /> Exam Pattern & Overview
               </h3>
-              <button 
-                onClick={(e) => { e.preventDefault(); setViewingPdf(EXAM_METADATA[selectedExam]); }} 
-                className="flex items-center px-4 py-2 bg-indigo-500/10 text-indigo-400 hover:bg-indigo-500/20 border border-indigo-500/30 rounded-lg text-sm font-bold transition-colors cursor-pointer"
-              >
-                <DownloadCloud className="w-4 h-4 mr-2" /> {EXAM_METADATA[selectedExam].pdfTitle}
-              </button>
             </div>
             <div className="overflow-x-auto">
               <table className="w-full text-left border-collapse">
@@ -1881,46 +3112,11 @@ const SyllabusScreen = ({ navigate, context, userData }) => {
             </div>
           )}
         </div>
-
-        {viewingPdf && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/80 backdrop-blur-sm p-4">
-            <MotionDiv animation="fade-in" className="bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl w-full max-w-3xl max-h-[80vh] flex flex-col overflow-hidden">
-              <div className="flex justify-between items-center p-4 border-b border-slate-800 bg-slate-800/50">
-                <h3 className="text-white font-bold flex items-center">
-                  <FileText className="w-5 h-5 mr-2 text-indigo-400" /> {viewingPdf.pdfTitle}
-                </h3>
-                <button onClick={() => setViewingPdf(null)} className="text-slate-400 hover:text-white transition-colors p-1">
-                  <X className="w-6 h-6" />
-                </button>
-              </div>
-              <div className="p-6 overflow-y-auto flex-1 text-slate-300 whitespace-pre-wrap font-mono text-sm leading-relaxed bg-slate-950">
-                {viewingPdf.pdfContent}
-              </div>
-              <div className="p-4 border-t border-slate-800 bg-slate-800/50 flex justify-end">
-                <button 
-                  onClick={() => {
-                    const blob = new Blob([viewingPdf.pdfContent], { type: 'text/plain' });
-                    const url = URL.createObjectURL(blob);
-                    const a = document.createElement('a');
-                    a.href = url;
-                    a.download = viewingPdf.pdfTitle.replace('.pdf', '.txt');
-                    document.body.appendChild(a);
-                    a.click();
-                    document.body.removeChild(a);
-                    URL.revokeObjectURL(url);
-                  }}
-                  className="flex items-center px-6 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg font-bold transition-colors shadow-lg"
-                >
-                  <DownloadCloud className="w-5 h-5 mr-2" /> Download as Text
-                </button>
-              </div>
-            </MotionDiv>
-          </div>
-        )}
       </MotionDiv>
     </div>
   );
 };
+
 
 const RoadmapSetupScreen = ({ navigate, context, onGenerate, userData }) => {
   const exams = Object.keys(SYLLABUS_DATA);
