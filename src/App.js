@@ -12,7 +12,7 @@ import {
 import html2canvas from 'html2canvas';
 import { LineChart, Line, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, Legend, ResponsiveContainer } from 'recharts';
 import { initializeApp } from 'firebase/app';
-import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, signOut } from 'firebase/auth';
+import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, signOut, sendEmailVerification } from 'firebase/auth';
 import { getFirestore, doc, getDoc, setDoc, updateDoc, onSnapshot } from 'firebase/firestore';
 const firebaseConfig = {
   apiKey: "AIzaSyC3RaNBvctI75u5QOHSBrF_AnhPrft391s",
@@ -455,7 +455,8 @@ const SYLLABUS_DATA = {
 };
 
 // --- GEMINI AI FETCHERS ---
-const fetchLivePYQsFromAI = async (exam, sub, topicName, count) => {
+// --- GEMINI AI FETCHERS ---
+const fetchLivePYQsFromAI = async (exam, sub, topicName, count, sessionIndex = 1) => {
   const apiKey = "AIzaSyBsbaozbt3qknzDE2GdnUDOgfTB0jZwt9c"; 
   const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
   
@@ -466,9 +467,11 @@ const fetchLivePYQsFromAI = async (exam, sub, topicName, count) => {
     ? "CRITICAL: ALL text, output, questions, and explanations MUST be strictly in Hindi language (Devanagari script). DO NOT output any English words in the question or explanation." 
     : "All content MUST be strictly in English.";
   
+  // NAYA: Added sessionIndex to prompt to ensure variance and count to enforce length
   const prompt = isMains ? 
     `You are an expert exam setter for India's ${exam} (${sub}). 
-    You MUST act as a strict search engine. Fetch EXACT, REAL Previous Year Questions (PYQs) from actual past ${exam} papers based on the topic '${topicName}'. DO NOT invent or simulate questions.
+    You MUST act as a strict search engine. Fetch EXACTLY ${count} REAL Previous Year Questions (PYQs) from actual past ${exam} papers based on the topic '${topicName}'. 
+    CRITICAL: This is Test Variant/Session #${sessionIndex}. You MUST pick a completely unique set of questions from different years (e.g., 2005-2022) to ensure the student doesn't see repeated questions across different test sessions. DO NOT invent or simulate questions.
     These are MAINS SUBJECTIVE/DESCRIPTIVE questions.
     Provide the exact 'year' the question appeared.
     DO NOT provide options. ${langInstruction} ABSOLUTELY NO LaTeX (no $ signs).
@@ -476,9 +479,10 @@ const fetchLivePYQsFromAI = async (exam, sub, topicName, count) => {
     Format JSON: [{ "year": "2022", "text": "${isHindi ? 'यहाँ सटीक प्रश्न लिखें (Hindi में)' : 'Exact Question text from past paper'}", "options": [], "correctAnswer": null, "explanation": "${isHindi ? 'यहाँ उत्तर के मुख्य बिंदु विस्तार से लिखें (Hindi में)' : 'Key points to include in the answer'}" }]`
   :
     `You are an expert exam setter for India's ${exam} (${sub}). 
-    You MUST act as a strict search engine. Fetch EXACT, REAL Previous Year Questions (PYQs) from actual past ${exam} papers based on the topic '${topicName}'. DO NOT invent or simulate questions.
+    You MUST act as a strict search engine. Fetch EXACTLY ${count} REAL Previous Year Questions (PYQs) from actual past ${exam} papers based on the topic '${topicName}'. DO NOT invent or simulate questions.
+    CRITICAL: This is Test Variant/Session #${sessionIndex}. To avoid repetition across different tests, randomly select a unique mix of questions from various historical years (e.g., 2008-2023). Ensure strictly no repetitions from standard default sets.
     The questions MUST be exact replicas of past papers. Provide the exact 'year' the question appeared.
-    Ensure strictly no repetitions. ${langInstruction}
+    ${langInstruction}
     ABSOLUTELY NO LaTeX (no $ signs). Use raw Unicode symbols directly for Greek letters or math.
 
     Format the explanation EXACTLY like this using clear line breaks (\\n):
@@ -504,7 +508,8 @@ const fetchLivePYQsFromAI = async (exam, sub, topicName, count) => {
     const data = await response.json();
     const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
     if (text) {
-      const cleanedText = text.replace(/```json/gi, '').replace(/```/g, '').trim();
+      // Is tarah likhein, ye regex error nahi dega:
+const cleanedText = text.split("```json").join("").split("```").join("").trim();
       return JSON.parse(cleanedText);
     }
   } catch(e) {
@@ -1521,7 +1526,7 @@ const AuthScreen = ({ onLogin }) => {
   const AIChatWidget = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState([
-    { text: "Hello! I am your AI Study Guide. Do you need help with your GATE, UPSC, BPSC, or Semester strategy?", sender: 'ai' }
+    { text: "Hello! I am your EduSpark Study Guide. Do you need help with your GATE, UPSC, BPSC, or Semester strategy?", sender: 'ai' }
   ]);
   const [input, setInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
@@ -1542,12 +1547,13 @@ const AuthScreen = ({ onLogin }) => {
       const apiKey = process.env.REACT_APP_GEMINI_API_KEY; 
       const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
       
-      const chatHistory = messages.map(m => `${m.sender === 'ai' ? 'EduForge' : 'Student'}: ${m.text}`).join('\n');
-      const prompt = `You are EduForge AI, an expert exam tutor for GATE, UPSC, BPSC, and University exams. Provide helpful, encouraging, and concise responses (max 3-4 sentences). Do not use markdown formatting like ** or *. Plain text only. All content MUST be in English.
+    // Inside handleSend:
+      const chatHistory = messages.map(m => `${m.sender === 'ai' ? 'EduAI' : 'Student'}: ${m.text}`).join('\n');
+      const prompt = `You are EduSpark, an expert exam tutor for GATE, UPSC, BPSC, and University exams. Provide helpful, encouraging, and concise responses (max 3-4 sentences). Do not use markdown formatting like ** or *. Plain text only. All content MUST be in English.
 Conversation History:
 ${chatHistory}
 Student: ${userText}
-EduForge:`;
+EduSpark:`;
 
       const payload = {
         contents: [{ parts: [{ text: prompt }] }]
@@ -1580,7 +1586,7 @@ EduForge:`;
           <div className="bg-gradient-to-r from-indigo-600 to-purple-600 p-4 flex justify-between items-center shadow-md">
             <div className="flex items-center space-x-2">
               <Brain className="w-6 h-6 text-white" />
-              <span className="font-bold text-white">AI Assistant</span>
+              <span className="font-bold text-white">EduSpark</span>
             </div>
             <button onClick={() => setIsOpen(false)} className="text-white hover:bg-white/20 p-1 rounded-full transition-colors">
               <X className="w-5 h-5" />
@@ -1642,7 +1648,7 @@ EduForge:`;
 const ServerConnectionLoader = ({ exam, sub, testType, topicIndex, sessionIndex, onComplete }) => {
   const [status, setStatus] = useState("Initializing secure connection...");
 
-  useEffect(() => {
+useEffect(() => {
     let isMounted = true;
     
     const fetchQuestions = async () => {
@@ -1657,14 +1663,15 @@ const ServerConnectionLoader = ({ exam, sub, testType, topicIndex, sessionIndex,
         let count = testMeta.qs;
 
         if (testType === 'Topic-Wise' && topicLists[topicIndex]) {
-          topicName = String(topicLists[topicIndex].section) + " - Session " + sessionIndex;
+          topicName = String(topicLists[topicIndex].section);
           count = isMains ? 5 : 30;
         }
         
         const fetchCount = count > 30 ? 30 : count; // Max bulk limit for API
         setStatus(`Fetching Live Internet PYQs for ${topicName}...`);
         
-        const aiQuestions = await fetchLivePYQsFromAI(exam, sub, topicName, fetchCount);
+        // NAYA: Now correctly passing fetchCount and sessionIndex to the AI
+        const aiQuestions = await fetchLivePYQsFromAI(exam, sub, topicName, fetchCount, sessionIndex);
         
         if (!isMounted) return;
         setStatus("Formatting and structuring the test...");
@@ -2386,10 +2393,10 @@ const StrategyScreen = ({ navigate, context, userData }) => {
       const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
 
       const pageW = 210;
-      const pageH = 297;
+      const pageH = 297;                                                                     
       const margin = 18;
       const contentW = pageW - margin * 2;
-      let y = 0;
+    let y = 0;
 
       const addPage = () => {
         pdf.addPage();
@@ -3370,16 +3377,7 @@ const RoadmapScreen = ({ navigate, context, userData, onTaskDone }) => {
   };
 
   const handleMarkClick = (task, moduleTitle) => {
-    // Lock logic: Video/Read tasks need >=80% in associated mock test
-    if (task.type === 'video' || task.type === 'read') {
-      const hasPassed = userData.testHistory.some(t => 
-        t.testName.includes(moduleTitle) && ((Number(t.score) / Number(t.maxScore)) * 100 >= 80)
-      );
-      if (!hasPassed) {
-        setLockedTaskReq({ taskTitle: task.title, moduleTitle });
-        return;
-      }
-    }
+    // Lock logic removed so users can instantly mark done and earn XP
     onTaskDone(task.id, task.xp);
   };
 
@@ -4571,10 +4569,49 @@ const CustomRoadmapPlanner = ({ navigate, userData, setUserData }) => {
   };
 
   const toggleTask = (taskId) => {
-    setUserData(prev => ({
-      ...prev,
-      customTasks: prev.customTasks.map(t => t.id === taskId ? { ...t, completed: !t.completed } : t)
-    }));
+    setUserData(prev => {
+      const task = prev.customTasks?.find(t => t.id === taskId);
+      if (!task) return prev;
+      
+      let updatedData = { ...prev };
+      
+      // Give a flat +30 XP for completing a custom planned task!
+      if (!task.completed) {
+         // Fallback manual XP calculation for custom tasks
+         const today = new Date().toDateString();
+         let currentDaily = prev.dailyProgress ? { ...prev.dailyProgress } : { date: today, xpGained: 0, targetXp: 120, isStreakCounted: false };
+         let newStreak = prev.streak || 0;
+
+         if (currentDaily.date !== today) {
+             const yesterday = new Date();
+             yesterday.setDate(yesterday.getDate() - 1);
+             if (currentDaily.date !== yesterday.toDateString() || !currentDaily.isStreakCounted) {
+                 newStreak = 0;
+             }
+             currentDaily = { date: today, xpGained: 0, targetXp: 120, isStreakCounted: false };
+         }
+
+         const newXp = currentDaily.xpGained + 30; // +30 XP for custom task
+         let isCounted = currentDaily.isStreakCounted;
+
+         if (!isCounted && newXp >= (currentDaily.targetXp * 0.75)) {
+             newStreak += 1;
+             isCounted = true;
+         }
+
+         updatedData = {
+             ...prev,
+             xp: (prev.xp || 0) + 30,
+             streak: newStreak,
+             dailyProgress: { ...currentDaily, xpGained: newXp, isStreakCounted: isCounted }
+         };
+      }
+
+      return {
+        ...updatedData,
+        customTasks: prev.customTasks.map(t => t.id === taskId ? { ...t, completed: !t.completed } : t)
+      };
+    });
   };
 
   const deleteTask = (taskId) => {
@@ -4810,7 +4847,7 @@ const OnboardingScreen = ({ navigate, userData, setUserData }) => {
 // --- STRICT ANTI-CHEAT FOCUS TIMER (FLOATING WIDGET) ---
 // --- STRICT ANTI-CHEAT FOCUS TIMER (FLOATING WIDGET + WEB AUDIO API) ---
 // --- STRICT ANTI-CHEAT FOCUS TIMER (100% BULLETPROOF) ---
-const FocusTimer = ({ onClose }) => {
+const FocusTimer = ({ onClose, onSessionComplete }) => {
   const [customMinutes, setCustomMinutes] = useState(25);
   const [timeLeft, setTimeLeft] = useState(25 * 60);
   const [isActive, setIsActive] = useState(false);
@@ -4826,12 +4863,26 @@ const FocusTimer = ({ onClose }) => {
   const audioCtxRef = useRef(null);
 
   // Sync state to refs instantly
+  // Timer Logic
   useEffect(() => {
-    activeRef.current = isActive;
-    modeRef.current = mode;
-    silentRef.current = isSilentMode;
-  }, [isActive, mode, isSilentMode]);
+    let interval = null;
+    if (isActive && timeLeft > 0) {
+      interval = setInterval(() => setTimeLeft(t => t - 1), 1000);
+    } else if (timeLeft === 0 && isActive) {
+      setIsActive(false);
+      
+      if (mode === 'focus' && onSessionComplete && !isCheating) {
+         onSessionComplete(customMinutes); 
+      }
 
+      alert(mode === 'focus' ? `Session Complete! You earned +${customMinutes * 2} XP. Take a break.` : "Break Over! Back to work.");
+      if (document.fullscreenElement) document.exitFullscreen().catch(e => console.log(e));
+      setMode(mode === 'focus' ? 'break' : 'focus');
+      setTimeLeft(mode === 'focus' ? 5 * 60 : customMinutes * 60);
+      setIsMinimized(false);
+    }
+    return () => clearInterval(interval);
+  }, [isActive, timeLeft, mode, customMinutes, isCheating, onSessionComplete]);
   // Bulletproof Beep Generator
   const playBeep = () => {
     if (silentRef.current || !audioCtxRef.current) return;
@@ -4849,7 +4900,7 @@ const FocusTimer = ({ onClose }) => {
       gain.gain.setValueAtTime(0.3, ctx.currentTime); // Volume
       
       osc.start();
-      osc.stop(ctx.currentTime + 0.5); // Play for half a second
+      osc.stop(ctx.currentTime + 0.5); 
     } catch (e) {
       console.log("Beep failed:", e);
     }
@@ -5778,28 +5829,40 @@ export default function App() {
   };
 
   // --- LOGIN / LOGOUT ---
-  const handleLogin = async ({ email, password, name, isLogin }) => {
-    setAuthError('');
-    try {
-      if (isLogin) {
-        // Login wale case mein kuch setDoc mat karo. Upar wala useEffect (Safe Load) khud data laayega!
-        await signInWithEmailAndPassword(auth, email, password);
-      } else {
-        // Sirf Naye account banne par setDoc chalao
-        const userCred = await createUserWithEmailAndPassword(auth, email, password);
-        const initialProfile = { ...defaultUserData, name, email };
-        await setDoc(doc(db, 'apps', appId, 'users', userCred.user.uid), initialProfile);
-        setUserData(initialProfile);
-        setIsDbReady(true);
+ // Make sure your firebase/auth import looks exactly like this:
+// Update the handleLogin function in your App component:
+const handleLogin = async ({ email, password, name, isLogin }) => {
+  setAuthError('');
+  try {
+    if (isLogin) {
+      const userCred = await signInWithEmailAndPassword(auth, email, password);
+      
+      // CHECK IF EMAIL IS VERIFIED
+      if (!userCred.user.emailVerified) {
+        alert("Your email is not verified yet. Please check your inbox and click the verification link.");
+        await signOut(auth); // Log out the unverified user immediately
+        return;
       }
-      setCurrentUser(email);
-      setCurrentView('dashboard');
-    } catch (e) {
-      alert("Firebase Error: " + e.message);
-      setAuthError(e.message);
+      
+    } else {
+      const userCred = await createUserWithEmailAndPassword(auth, email, password);
+      const initialProfile = { ...defaultUserData, name, email };
+      await setDoc(doc(db, 'apps', appId, 'users', userCred.user.uid), initialProfile);
+      
+      // SEND VERIFICATION EMAIL TO NEW USER
+      await sendEmailVerification(userCred.user);
+      alert("Account created successfully! Please check your email and verify it before logging in.");
+      
+      await signOut(auth); // Log out immediately so they cannot access the dashboard without verifying
+      return; 
     }
-  };
-
+    setCurrentUser(email);
+    setCurrentView('dashboard');
+  } catch (e) {
+    alert("Error: " + e.message);
+    setAuthError(e.message);
+  }
+};
   const handleLogout = async () => {
     await signOut(auth);
     setCurrentUser(null);
@@ -5810,36 +5873,44 @@ export default function App() {
   };
 
   // --- PROGRESS & XP LOGIC ---
-  const updateDailyXP = (gain) => {
+  // --- 4. ROBUST XP & STREAK CALCULATOR ---
+  const calculateNewXPAndStreak = (prev, gain) => {
     const today = new Date().toDateString();
-    setUserData(prev => {
-      let currentDaily = prev.dailyProgress || { date: today, xpGained: 0, targetXp: 120, isStreakCounted: false };
-      let newStreak = prev.streak || 0;
+    
+    // Safely copy current progress or initialize new
+    let currentDaily = prev.dailyProgress 
+      ? { ...prev.dailyProgress } 
+      : { date: today, xpGained: 0, targetXp: 120, isStreakCounted: false };
+      
+    let newStreak = prev.streak || 0;
 
-      if (currentDaily.date !== today) {
-         const yesterday = new Date();
-         yesterday.setDate(yesterday.getDate() - 1);
-         if (currentDaily.date !== yesterday.toDateString() || !currentDaily.isStreakCounted) {
-             newStreak = 0;
-         }
-         currentDaily = { date: today, xpGained: 0, targetXp: currentDaily.targetXp || 120, isStreakCounted: false };
-      }
+    // Handle Day Change
+    if (currentDaily.date !== today) {
+       const yesterday = new Date();
+       yesterday.setDate(yesterday.getDate() - 1);
+       
+       // Break streak if target wasn't met yesterday
+       if (currentDaily.date !== yesterday.toDateString() || !currentDaily.isStreakCounted) {
+           newStreak = 0; 
+       }
+       // Reset for the new day
+       currentDaily = { date: today, xpGained: 0, targetXp: currentDaily.targetXp || 120, isStreakCounted: false };
+    }
 
-      const newXp = currentDaily.xpGained + gain;
-      let isCounted = currentDaily.isStreakCounted;
+    const newXp = currentDaily.xpGained + gain;
+    let isCounted = currentDaily.isStreakCounted;
 
-      if (!isCounted && newXp >= (currentDaily.targetXp * 0.75)) {
-         newStreak += 1;
-         isCounted = true;
-      }
+    // Award streak +1 ONLY if they just crossed the 75% threshold
+    if (!isCounted && newXp >= (currentDaily.targetXp * 0.75)) {
+       newStreak += 1;
+       isCounted = true;
+    }
 
-      return {
-        ...prev,
-        xp: (prev.xp || 0) + gain,
-        streak: newStreak,
-        dailyProgress: { ...currentDaily, xpGained: newXp, isStreakCounted: isCounted }
-      };
-    });
+    return {
+      xp: (prev.xp || 0) + gain,
+      streak: newStreak,
+      dailyProgress: { ...currentDaily, xpGained: newXp, isStreakCounted: isCounted }
+    };
   };
 
   const navigate = (view, data = null) => {
@@ -5847,11 +5918,13 @@ export default function App() {
     if (data) setContextData(data);
   };
 
-  const handleTestComplete = (resultData) => {
-    const xpGain = Math.max(0, Math.floor(Number(resultData.score) * 5));
+ const handleTestComplete = (resultData) => {
     setUserData(prev => {
+      const xpGain = Math.max(0, Math.floor(Number(resultData.score) * 5));
       const percentage = (Number(resultData.score) / Number(resultData.maxScore)) * 100;
       let newlyCompleted = [];
+      
+      // Auto-complete logic based on test performance
       if (percentage >= 80 && prev.activeRoadmap && prev.activeRoadmap.roadmapData) {
         prev.activeRoadmap.roadmapData.forEach(phase => {
           if (resultData.testName.includes(phase.title)) {
@@ -5863,27 +5936,38 @@ export default function App() {
           }
         });
       }
+
+      const xpUpdates = calculateNewXPAndStreak(prev, xpGain);
+
       return {
         ...prev,
-        testHistory: [resultData, ...prev.testHistory].slice(0, 5),
+        ...xpUpdates,
+        testHistory: [resultData, ...(prev.testHistory || [])].slice(0, 10),
         completedTasks: [...prev.completedTasks, ...newlyCompleted]
       };
     });
-    updateDailyXP(xpGain);
   };
-
   const handleRoadmapGenerate = (roadmap) => {
     setUserData(prev => ({ ...prev, activeRoadmap: roadmap, completedTasks: [] }));
   };
 
   const handleTaskDone = (taskId, xpString) => {
-    if (!userData.completedTasks.includes(taskId)) {
-      const gain = parseInt(String(xpString).replace(/[^0-9]/g, '')) || 0;
-      setUserData(prev => ({ ...prev, completedTasks: [...prev.completedTasks, taskId] }));
-      updateDailyXP(gain);
-    }
-  };
+    setUserData(prev => {
+      // Prevent double marking
+      if (prev.completedTasks.includes(taskId)) return prev;
 
+      // Extract number from strings like "+120 XP"
+      const gain = parseInt(String(xpString).replace(/[^0-9]/g, '')) || 0;
+      
+      const xpUpdates = calculateNewXPAndStreak(prev, gain);
+
+      return {
+        ...prev,
+        ...xpUpdates,
+        completedTasks: [...prev.completedTasks, taskId]
+      };
+    });
+  };
   if (!currentUser) return <AuthScreen onLogin={handleLogin} authError={authError} />;
 
   // YAHAN SE AAPKA PURANA RETURN (...) WALA UI SHURU HOTA HAI
