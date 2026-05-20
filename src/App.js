@@ -5831,35 +5831,22 @@ export default function App() {
   // --- LOGIN / LOGOUT ---
  // Make sure your firebase/auth import looks exactly like this:
 // Update the handleLogin function in your App component:
+// App.js ke andar handleLogin function ko update karein:
 const handleLogin = async ({ email, password, name, isLogin }) => {
   setAuthError('');
   try {
     if (isLogin) {
-      const userCred = await signInWithEmailAndPassword(auth, email, password);
-      
-      // CHECK IF EMAIL IS VERIFIED
-      if (!userCred.user.emailVerified) {
-        alert("Your email is not verified yet. Please check your inbox and click the verification link.");
-        await signOut(auth); // Log out the unverified user immediately
-        return;
-      }
-      
+      await signInWithEmailAndPassword(auth, email, password);
+      setCurrentUser(email);
+      setCurrentView('dashboard');
     } else {
       const userCred = await createUserWithEmailAndPassword(auth, email, password);
-      const initialProfile = { ...defaultUserData, name, email };
-      await setDoc(doc(db, 'apps', appId, 'users', userCred.user.uid), initialProfile);
-      
-      // SEND VERIFICATION EMAIL TO NEW USER
+      await setDoc(doc(db, 'apps', appId, 'users', userCred.user.uid), { name, email });
       await sendEmailVerification(userCred.user);
-      alert("Account created successfully! Please check your email and verify it before logging in.");
-      
-      await signOut(auth); // Log out immediately so they cannot access the dashboard without verifying
-      return; 
+      alert("Verification link sent to your email!");
+      // setIsLogin(true); // <--- Yahan error hai! Isse hata dein ya comment kar dein
     }
-    setCurrentUser(email);
-    setCurrentView('dashboard');
   } catch (e) {
-    alert("Error: " + e.message);
     setAuthError(e.message);
   }
 };
