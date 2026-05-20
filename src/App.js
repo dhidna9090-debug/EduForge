@@ -1440,11 +1440,12 @@ const calculateUserLevel = (userData) => {
   }
   return level;
 };
-const AuthScreen = ({ onLogin }) => {
+// Yahan onLogin ke sath authError prop bhi receive karein
+const AuthScreen = ({ onLogin, authError }) => { 
   const [isLogin, setIsLogin] = useState(true);
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
-  const [password, setPassword] = useState(''); // Password fixed!
+  const [password, setPassword] = useState('');
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -1475,6 +1476,16 @@ const AuthScreen = ({ onLogin }) => {
       <MotionDiv delay={100} className="mt-8 sm:mx-auto sm:w-full sm:max-w-md relative z-10">
         <div className="bg-slate-900 py-8 px-4 shadow-2xl shadow-indigo-500/10 sm:rounded-2xl sm:px-10 border border-slate-800">
           <form className="space-y-6" onSubmit={handleSubmit}>
+            
+            {/* 🚨 NAYA CODE: Ye error message dikhayega agar login fail hua */}
+            {authError && (
+              <MotionDiv animation="fade-in">
+                <div className="bg-red-500/10 border border-red-500/50 text-red-400 p-3 rounded-xl text-sm text-center font-medium">
+                  {authError.replace('Firebase:', '').trim()}
+                </div>
+              </MotionDiv>
+            )}
+
             {!isLogin && (
               <MotionDiv animation="fade-right" delay={100}>
                 <label className="block text-sm font-medium text-slate-300">Full Name</label>
@@ -5832,19 +5843,22 @@ export default function App() {
  // Make sure your firebase/auth import looks exactly like this:
 // Update the handleLogin function in your App component:
 // App.js ke andar handleLogin function ko update karein:
+// App.js mein handleLogin function ko aise change karein:
+// App.js mein handleLogin function ko aise change karein:
 const handleLogin = async ({ email, password, name, isLogin }) => {
   setAuthError('');
   try {
     if (isLogin) {
+      // Login ka code
       await signInWithEmailAndPassword(auth, email, password);
       setCurrentUser(email);
       setCurrentView('dashboard');
     } else {
+      // Naya Account banane ka code
       const userCred = await createUserWithEmailAndPassword(auth, email, password);
       await setDoc(doc(db, 'apps', appId, 'users', userCred.user.uid), { name, email });
-      await sendEmailVerification(userCred.user);
-      alert("Verification link sent to your email!");
-      // setIsLogin(true); // <--- Yahan error hai! Isse hata dein ya comment kar dein
+      setCurrentUser(email);
+      setCurrentView('dashboard');
     }
   } catch (e) {
     setAuthError(e.message);
