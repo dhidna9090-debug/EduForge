@@ -3388,8 +3388,20 @@ const RoadmapScreen = ({ navigate, context, userData, onTaskDone }) => {
   };
 
   const handleMarkClick = (task, moduleTitle) => {
-    // Lock logic removed so users can instantly mark done and earn XP
     onTaskDone(task.id, task.xp);
+  };
+
+  // 🚨 Triggers the Phase Gate Test
+  const handleTakePhaseTest = (phase, mIdx) => {
+    navigate('active-test', {
+        exam: safeContext.exam,
+        sub: safeContext.sub,
+        testType: 'Topic-Wise',
+        testName: `${phase.title} - Phase Assessment`, 
+        phaseIndex: mIdx,
+        topicIndex: mIdx % (SYLLABUS_DATA[safeContext.exam]?.[safeContext.sub]?.length || 1), 
+        sessionIndex: 1,
+    });
   };
 
   return (
@@ -3413,26 +3425,44 @@ const RoadmapScreen = ({ navigate, context, userData, onTaskDone }) => {
       </MotionDiv>
 
       <div className="space-y-12">
-        {roadmapData.map((module, mIdx) => (
-          <MotionDiv key={module.id || mIdx} delay={mIdx * 100} className="relative">
+       {roadmapData.map((module, mIdx) => {
+          // 🚨 STRICT LOCK LOGIC
+          const isUnlocked = mIdx === 0 || (userData.clearedPhases && userData.clearedPhases.includes(mIdx - 1));
+          const isCleared = userData.clearedPhases && userData.clearedPhases.includes(mIdx);
+
+          return (
+          <MotionDiv 
+            key={module.id || mIdx} 
+            delay={mIdx * 100} 
+            // NAYA: Mask hatakar bas opacity kam kar di aur pointer-events disable kar diye
+            className={`relative transition-all duration-500 ${!isUnlocked ? 'opacity-50 grayscale-[40%] pointer-events-none select-none' : ''}`}
+          >
+
+            {/* MASK OVERLAY REMOVED FROM HERE */}
+
             <div className="absolute left-8 md:left-10 top-16 bottom-0 w-0.5 bg-slate-800"></div>
 
             <div className="flex items-center mb-6 relative z-10">
-              <div className="w-16 h-16 md:w-20 md:h-20 bg-slate-900 border border-slate-700 rounded-2xl flex flex-col items-center justify-center shadow-lg shadow-black/50 shrink-0">
+              <div className={`w-16 h-16 md:w-20 md:h-20 border rounded-2xl flex flex-col items-center justify-center shadow-lg shrink-0 ${!isUnlocked ? 'bg-slate-900 border-slate-800 shadow-none' : 'bg-slate-900 border-slate-700 shadow-black/50'}`}>
                 <span className="text-xs font-bold text-slate-400 uppercase tracking-wider text-center">{String(module.week).split(' ')[0]}</span>
                 <span className="text-xl md:text-2xl font-black text-white text-center px-1">{String(module.week).split(' ').slice(1).join(' ') || module.week}</span>
               </div>
               <div className="ml-6">
-                <h2 className="text-2xl font-bold text-white">{String(module.title)}</h2>
+                
+                {/* NAYA: Title ke bagal mein chhota sa Locked Badge */}
+                <div className="flex items-center flex-wrap gap-2">
+                  <h2 className="text-2xl font-bold text-white">{String(module.title)}</h2>
+                  {!isUnlocked && (
+                    <span className="px-2 py-1 bg-red-500/10 border border-red-500/20 text-red-400 text-[10px] uppercase tracking-wider font-bold rounded-md flex items-center">
+                      <Lock className="w-3 h-3 mr-1" /> Locked (Requires 80%)
+                    </span>
+                  )}
+                </div>
+
                 <div className="flex flex-wrap space-x-4 mt-1 gap-y-2">
                   <span className="text-sm text-slate-500 flex items-center"><Clock className="w-3 h-3 mr-1" /> {(module.tasks || []).length} Modules</span>
                   {module.dateRange && (
                     <span className="text-sm text-indigo-400 flex items-center font-medium"><Calendar className="w-3 h-3 mr-1" /> {String(module.dateRange)}</span>
-                  )}
-                  {module.weight && safeContext.planMode === 'vvi_30_days' && (
-                    <span className="text-sm text-red-400 flex items-center font-bold px-3 py-1 bg-red-500/10 rounded-lg border border-red-500/20">
-                      <Target className="w-3 h-3 mr-1" /> Weightage: {module.weight}% | Your Test Score: {module.diagnosticScore !== undefined ? module.diagnosticScore : 'N/A'}%
-                    </span>
                   )}
                 </div>
               </div>
@@ -3443,9 +3473,7 @@ const RoadmapScreen = ({ navigate, context, userData, onTaskDone }) => {
                 const isDone = userData.completedTasks.includes(task.id);
                 return (
                   <MotionDiv key={task.id || tIdx} delay={mIdx * 100 + tIdx * 50} animation="fade-left">
-                    <div 
-                      className={`group bg-slate-900 border ${isDone ? 'border-emerald-500/50' : task.border} rounded-2xl p-4 md:p-5 flex flex-col md:flex-row md:items-center justify-between transition-colors relative overflow-hidden`}
-                    >
+                    <div className={`group bg-slate-900 border ${isDone ? 'border-emerald-500/50' : task.border} rounded-2xl p-4 md:p-5 flex flex-col md:flex-row md:items-center justify-between transition-colors relative overflow-hidden`}>
                       <div className={`absolute left-0 top-0 bottom-0 w-1 ${isDone ? 'bg-emerald-500' : task.bg} transition-all duration-300 group-hover:w-full opacity-10`}></div>
                       
                       <div className="flex items-center relative z-10 mb-4 md:mb-0">
@@ -3470,19 +3498,25 @@ const RoadmapScreen = ({ navigate, context, userData, onTaskDone }) => {
                       <div className="flex flex-col md:flex-row gap-3 w-full md:w-auto mt-4 md:mt-0">
                         {task.type === 'video' || task.isComingSoon ? (
                           <button disabled className="px-5 py-2.5 rounded-lg text-sm font-bold bg-slate-800/50 text-slate-500 cursor-not-allowed flex items-center justify-center relative z-10 border border-slate-700 border-dashed">
-                            <Video className="w-4 h-4 mr-2 opacity-50" /> Lecture Video Updating (Coming Soon)
+                            <Video className="w-4 h-4 mr-2 opacity-50" /> Update Pending
                           </button>
                         ) : task.url ? (
                           <a href={task.url} target="_blank" rel="noopener noreferrer" className="px-5 py-2.5 rounded-lg text-sm font-bold bg-indigo-600/20 text-indigo-400 hover:bg-indigo-600 hover:text-white transition-all flex items-center justify-center relative z-10">
                             <ExternalLink className="w-4 h-4 mr-2" /> Open Link
                           </a>
                         ) : null}
+                        
+                        {/* NAYA: Agar phase locked hai, toh button 'Locked' dikhega */}
                         <button 
                           onClick={(e) => { e.stopPropagation(); handleMarkClick(task, module.title); }}
-                          disabled={isDone}
-                          className={`relative z-10 w-full md:w-auto px-5 py-2.5 rounded-lg text-sm font-bold transition-all whitespace-nowrap ${isDone ? 'bg-emerald-500/20 text-emerald-400 cursor-not-allowed' : 'bg-slate-800 text-slate-300 hover:bg-emerald-500 hover:text-white border border-transparent'}`}
+                          disabled={isDone || !isUnlocked}
+                          className={`relative z-10 w-full md:w-auto px-5 py-2.5 rounded-lg text-sm font-bold transition-all whitespace-nowrap flex items-center justify-center ${
+                            !isUnlocked ? 'bg-slate-800/40 text-slate-500 border border-slate-700 border-dashed cursor-not-allowed' :
+                            isDone ? 'bg-emerald-500/20 text-emerald-400 cursor-not-allowed' : 
+                            'bg-slate-800 text-slate-300 hover:bg-emerald-500 hover:text-white border border-transparent'
+                          }`}
                         >
-                          {isDone ? 'Completed' : 'Mark Done'}
+                          {!isUnlocked ? <><Lock className="w-4 h-4 mr-2" /> Locked</> : isDone ? 'Completed' : 'Mark Done'}
                         </button>
                       </div>
                     </div>
@@ -3490,38 +3524,29 @@ const RoadmapScreen = ({ navigate, context, userData, onTaskDone }) => {
                 );
               })}
             </div>
-          </MotionDiv>
-        ))}
-      </div>
 
-      {lockedTaskReq && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/80 backdrop-blur-sm p-4">
-          <MotionDiv animation="fade-in" className="bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl w-full max-w-md p-6 relative">
-            <button onClick={() => setLockedTaskReq(null)} className="absolute top-4 right-4 text-slate-400 hover:text-white transition-colors">
-              <X className="w-5 h-5" />
-            </button>
-            <div className="w-16 h-16 bg-red-500/20 text-red-500 rounded-full flex items-center justify-center mb-6 shadow-[0_0_30px_rgba(239,68,68,0.3)] mx-auto">
-              <Lock className="w-8 h-8" />
-            </div>
-            <h3 className="text-xl font-bold text-white text-center mb-2">Completion Locked</h3>
-            <p className="text-slate-400 text-center mb-6">
-              To mark <span className="text-white font-bold">"{lockedTaskReq.taskTitle}"</span> as done, you must first take the topic test for <span className="text-indigo-400 font-bold">"{lockedTaskReq.moduleTitle}"</span> and score a minimum of <span className="text-emerald-400 font-bold">80% marks</span>. (Or it will auto-complete once passed!)
-            </p>
-            <div className="flex gap-4">
-              <button onClick={() => setLockedTaskReq(null)} className="flex-1 py-3 bg-slate-800 hover:bg-slate-700 text-white font-bold rounded-xl transition-colors">
-                Cancel
-              </button>
-              <button onClick={() => { setLockedTaskReq(null); navigate('test-hub'); }} className="flex-1 py-3 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl transition-colors shadow-lg shadow-indigo-500/25">
-                Go to Tests
-              </button>
-            </div>
+            {/* PHASE ASSESSMENT BUTTON */}
+            {isUnlocked && (
+              <div className="mt-8 pl-20 md:pl-28 relative z-20">
+                <button 
+                  onClick={() => handleTakePhaseTest(module, mIdx)}
+                  className={`w-full md:w-auto px-6 py-4 rounded-xl font-bold text-sm transition-all shadow-lg flex items-center justify-center ${isCleared ? 'bg-emerald-600/20 text-emerald-400 border border-emerald-500/50 hover:bg-emerald-600/30' : 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white hover:from-indigo-500 hover:to-purple-500 shadow-indigo-500/25 transform hover:-translate-y-1'}`}
+                >
+                  {isCleared ? (
+                    <><CheckCircle className="w-5 h-5 mr-2" /> Phase Cleared (Retake Assessment)</>
+                  ) : (
+                    <><Target className="w-5 h-5 mr-2" /> Take Phase Assessment (Requires 80% to Unlock Next)</>
+                  )}
+                </button>
+              </div>
+            )}
           </MotionDiv>
-        </div>
-      )}
+          );
+        })}
+      </div>
     </div>
   );
 };
-
 const TestHubScreen = ({ navigate, userData }) => {
   const exams = Object.keys(SYLLABUS_DATA);
   const initialExam = userData?.targetExam && exams.includes(userData.targetExam) ? userData.targetExam : exams[0];
@@ -3744,7 +3769,7 @@ const ActiveTestScreen = ({ navigate, context, onTestComplete }) => {
     setAnswers(newAnswers);
   };
 
-  const submitTest = () => {
+ const submitTest = () => {
     let score = 0;
     let totalMaxScore = 0;
     let subjectiveCount = 0;
@@ -3755,48 +3780,35 @@ const ActiveTestScreen = ({ navigate, context, onTestComplete }) => {
       totalMaxScore += q.marks;
       
       if (q.type === 'mcq') {
-        if (answers[i] === q.correctAnswer) {
-          score += q.marks;
-          correctCount++;
-        }
-        else if (answers[i] !== undefined && answers[i] !== '') {
-          score -= q.negativeMarks;
-          incorrectCount++;
-        }
+        if (answers[i] === q.correctAnswer) { score += q.marks; correctCount++; }
+        else if (answers[i] !== undefined && answers[i] !== '') { score -= q.negativeMarks; incorrectCount++; }
       } else if (q.type === 'nat') {
-        if (answers[i] && String(answers[i]) === String(q.correctAnswer)) {
-          score += q.marks;
-          correctCount++;
-        } else if (answers[i] !== undefined && answers[i] !== '') {
-          incorrectCount++;
-        }
+        if (answers[i] && String(answers[i]) === String(q.correctAnswer)) { score += q.marks; correctCount++; } 
+        else if (answers[i] !== undefined && answers[i] !== '') { incorrectCount++; }
       } else if (q.type === 'theory') {
-        if (answers[i] && String(answers[i]).length > 20) {
-          score += q.marks;
-          subjectiveCount++;
-          correctCount++;
-        } else if (answers[i] !== undefined && answers[i] !== '') {
-          incorrectCount++;
-        }
+        if (answers[i] && String(answers[i]).length > 20) { score += q.marks; subjectiveCount++; correctCount++; } 
+        else if (answers[i] !== undefined && answers[i] !== '') { incorrectCount++; }
       }
     });
 
-    const testNameDisplay = safeContext.testType === 'Topic-Wise' 
+    // Handle Custom Phase Assessment Names
+    const testNameDisplay = safeContext.testName || (
+      safeContext.testType === 'Topic-Wise' 
       ? String(SYLLABUS_DATA[safeContext.exam]?.[safeContext.sub]?.[safeContext.topicIndex]?.section || 'Topic Test') + " - Session " + safeContext.sessionIndex
-      : safeContext.testType === 'Diagnostic' ? '30-Day VVI Diagnostic Assessment' : `${safeContext.testType} Test ${safeContext.sessionIndex || 1}`;
+      : safeContext.testType === 'Diagnostic' ? '30-Day VVI Diagnostic Assessment' : `${safeContext.testType} Test ${safeContext.sessionIndex || 1}`
+    );
 
     const resultData = { 
       id: Date.now().toString(),
       date: new Date().toLocaleDateString(),
       score: Math.max(0, score).toFixed(2), 
       totalAttempted: Object.keys(answers).length, 
-      correctCount,
-      incorrectCount,
-      unattemptedCount: questions.length - Object.keys(answers).length,
+      correctCount, incorrectCount, unattemptedCount: questions.length - Object.keys(answers).length,
       exam: safeContext.exam, 
       sub: safeContext.sub, 
       maxScore: totalMaxScore,
       testName: testNameDisplay,
+      phaseIndex: safeContext.phaseIndex, // <--- INJECT PHASE INDEX FOR STRICT LOCK
       subjectiveEvaluated: subjectiveCount > 0,
       questions: questions,
       answers: answers,
@@ -3809,7 +3821,6 @@ const ActiveTestScreen = ({ navigate, context, onTestComplete }) => {
     }
     navigate('test-result', resultData);
   };
-
   const q = questions[currentIndex] || {};
   
   const testNameDisplay = safeContext.testType === 'Topic-Wise' 
@@ -5747,9 +5758,9 @@ export default function App() {
   const [isDbReady, setIsDbReady] = useState(false);
 
   const defaultUserData = {
-    name: '', email: '', targetExam: '', targetSub: '', testHistory: [], activeRoadmap: null, completedTasks: [], customTasks: [], xp: 0, streak: 0, dailyProgress: { date: '', xpGained: 0, targetXp: 120, isStreakCounted: false }, isPro: false, profilePhoto: null
+    name: '', email: '', targetExam: '', targetSub: '', testHistory: [], activeRoadmap: null, completedTasks: [], customTasks: [], xp: 0, streak: 0, dailyProgress: { date: '', xpGained: 0, targetXp: 120, isStreakCounted: false }, isPro: false, profilePhoto: null,
+    clearedPhases: [] // <--- ADD THIS LINE
   };
-
   const [userData, setUserData] = useState(defaultUserData);
 
   // --- 1. FIREBASE AUTH LISTENER ---
@@ -5889,7 +5900,6 @@ const handleLogin = async ({ email, password, name, isLogin }) => {
     if (currentDaily.date !== today) {
        const yesterday = new Date();
        yesterday.setDate(yesterday.getDate() - 1);
-       
        // Break streak if target wasn't met yesterday
        if (currentDaily.date !== yesterday.toDateString() || !currentDaily.isStreakCounted) {
            newStreak = 0; 
@@ -5924,11 +5934,19 @@ const handleLogin = async ({ email, password, name, isLogin }) => {
       const xpGain = Math.max(0, Math.floor(Number(resultData.score) * 5));
       const percentage = (Number(resultData.score) / Number(resultData.maxScore)) * 100;
       let newlyCompleted = [];
-      
+      let newClearedPhases = [...(prev.clearedPhases || [])];
+
+      // 🚨 STRICT RULE: Pass Phase Test with >= 80% to unlock the next phase
+      if (percentage >= 80 && resultData.phaseIndex !== undefined) {
+        if (!newClearedPhases.includes(resultData.phaseIndex)) {
+          newClearedPhases.push(resultData.phaseIndex);
+        }
+      }
+
       // Auto-complete logic based on test performance
       if (percentage >= 80 && prev.activeRoadmap && prev.activeRoadmap.roadmapData) {
-        prev.activeRoadmap.roadmapData.forEach(phase => {
-          if (resultData.testName.includes(phase.title)) {
+        prev.activeRoadmap.roadmapData.forEach((phase, mIdx) => {
+          if (resultData.testName && resultData.testName.includes(phase.title)) {
             (phase.tasks || []).forEach(task => {
               if ((task.type === 'video' || task.type === 'read') && !prev.completedTasks.includes(task.id)) {
                 newlyCompleted.push(task.id);
@@ -5943,6 +5961,7 @@ const handleLogin = async ({ email, password, name, isLogin }) => {
       return {
         ...prev,
         ...xpUpdates,
+        clearedPhases: newClearedPhases, // <--- SAVE UNLOCKED PHASES
         testHistory: [resultData, ...(prev.testHistory || [])].slice(0, 10),
         completedTasks: [...prev.completedTasks, ...newlyCompleted]
       };
