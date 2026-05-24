@@ -467,7 +467,6 @@ const fetchLivePYQsFromAI = async (exam, sub, topicName, count, sessionIndex = 1
     ? "CRITICAL: ALL text, output, questions, and explanations MUST be strictly in Hindi language (Devanagari script). DO NOT output any English words in the question or explanation." 
     : "All content MUST be strictly in English.";
   
-  // NAYA: Added sessionIndex to prompt to ensure variance and count to enforce length
   const prompt = isMains ? 
     `You are an expert exam setter for India's ${exam} (${sub}). 
     You MUST act as a strict search engine. Fetch EXACTLY ${count} REAL Previous Year Questions (PYQs) from actual past ${exam} papers based on the topic '${topicName}'. 
@@ -505,19 +504,24 @@ const fetchLivePYQsFromAI = async (exam, sub, topicName, count, sessionIndex = 1
       body: JSON.stringify(payload)
     });
     if (!response.ok) return [];
+    
     const data = await response.json();
     const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+    
     if (text) {
-      // Is tarah likhein, ye regex error nahi dega:
-const cleanedText = text.split("```json").join("").split("```").join("").trim();
-      return JSON.parse(cleanedText);
+      // 🚨 Robust Regex Extraction: Prevents JSON parse crashes
+      let jsonStr = text;
+      const match = text.match(/\[[\s\S]*\]/);
+      if (match) {
+        jsonStr = match[0];
+      }
+      return JSON.parse(jsonStr);
     }
   } catch(e) {
     console.error("AI Fetch Error", e);
   }
   return [];
 };
-
 const fetchAIStrategy = async (exam, sub) => {
   const apiKey = "AIzaSyBsbaozbt3qknzDE2GdnUDOgfTB0jZwt9c"; 
   const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
@@ -3759,8 +3763,12 @@ const ActiveTestScreen = ({ navigate, context, onTestComplete }) => {
     if (currentIndex < (questions.length - 1)) setCurrentIndex(currentIndex + 1);
   };
 
-  const handleSaveNext = () => {
-    if (currentIndex < (questions.length - 1)) setCurrentIndex(currentIndex + 1);
+ const handleSaveNext = () => {
+    if (currentIndex < (questions.length - 1)) {
+      setCurrentIndex(currentIndex + 1);
+    } else {
+      submitTest(); // 🚨 Submits the test if they are on the last question
+    }
   };
 
   const handleClear = () => {
@@ -3957,11 +3965,9 @@ const ActiveTestScreen = ({ navigate, context, onTestComplete }) => {
     </div>
   );
 };
- const fetchAiForExplanation = async (q, correctAnsText, fallbackExp) => {
-  // Aapki Gemini API Key (Screenshot wali)
-  const apiKey = process.env.REACT_APP_GEMINI_API_KEY;
-  
-  // Naya Stable Model
+const fetchAiForExplanation = async (q, correctAnsText, fallbackExp) => {
+  // Fixed: Using hardcoded API key for consistency with your other functions
+  const apiKey = "AIzaSyBsbaozbt3qknzDE2GdnUDOgfTB0jZwt9c"; 
   const url = `https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
   
   const isTheory = q.type === 'theory';
@@ -3993,15 +3999,13 @@ const ActiveTestScreen = ({ navigate, context, onTestComplete }) => {
     }
     
     const data = await response.json();
-    console.log(data)
     return data.candidates?.[0]?.content?.parts?.[0]?.text || "No text generated.";
     
   } catch (err) {
-    console.log(err)
+    console.error(err);
     return `🔴 NETWORK ERROR: ${err.message}`;
   }
 };
-
 const LiveAIExplanation = ({ q, correctAnsText, fallbackExp }) => {
   const [aiText, setAiText] = useState("");
   const [status, setStatus] = useState("idle"); 
@@ -4869,6 +4873,7 @@ const OnboardingScreen = ({ navigate, userData, setUserData }) => {
 // --- STRICT ANTI-CHEAT FOCUS TIMER (FLOATING WIDGET) ---
 // --- STRICT ANTI-CHEAT FOCUS TIMER (FLOATING WIDGET + WEB AUDIO API) ---
 // --- STRICT ANTI-CHEAT FOCUS TIMER (100% BULLETPROOF) ---
+// --- STRICT ANTI-CHEAT FOCUS TIMER (100% BULLETPROOF) ---
 const FocusTimer = ({ onClose, onSessionComplete }) => {
   const [customMinutes, setCustomMinutes] = useState(25);
   const [timeLeft, setTimeLeft] = useState(25 * 60);
@@ -4878,33 +4883,19 @@ const FocusTimer = ({ onClose, onSessionComplete }) => {
   const [isSilentMode, setIsSilentMode] = useState(false);
   const [isMinimized, setIsMinimized] = useState(false);
   
-  // NAYA: Refs for instant detection without React re-render lag
+  // Refs for instant detection without React re-render lag
   const activeRef = useRef(isActive);
   const modeRef = useRef(mode);
   const silentRef = useRef(isSilentMode);
   const audioCtxRef = useRef(null);
 
-  // Sync state to refs instantly
-  // Timer Logic
+  // 🚨 FIX 1: Sync state to refs instantly so the Anti-Cheat always knows the true state
   useEffect(() => {
-    let interval = null;
-    if (isActive && timeLeft > 0) {
-      interval = setInterval(() => setTimeLeft(t => t - 1), 1000);
-    } else if (timeLeft === 0 && isActive) {
-      setIsActive(false);
-      
-      if (mode === 'focus' && onSessionComplete && !isCheating) {
-         onSessionComplete(customMinutes); 
-      }
+    activeRef.current = isActive;
+    modeRef.current = mode;
+    silentRef.current = isSilentMode;
+  }, [isActive, mode, isSilentMode]);
 
-      alert(mode === 'focus' ? `Session Complete! You earned +${customMinutes * 2} XP. Take a break.` : "Break Over! Back to work.");
-      if (document.fullscreenElement) document.exitFullscreen().catch(e => console.log(e));
-      setMode(mode === 'focus' ? 'break' : 'focus');
-      setTimeLeft(mode === 'focus' ? 5 * 60 : customMinutes * 60);
-      setIsMinimized(false);
-    }
-    return () => clearInterval(interval);
-  }, [isActive, timeLeft, mode, customMinutes, isCheating, onSessionComplete]);
   // Bulletproof Beep Generator
   const playBeep = () => {
     if (silentRef.current || !audioCtxRef.current) return;
@@ -4928,21 +4919,26 @@ const FocusTimer = ({ onClose, onSessionComplete }) => {
     }
   };
 
-  // Timer Logic
+  // 🚨 FIX 2: Single, clean Timer Logic block
   useEffect(() => {
     let interval = null;
     if (isActive && timeLeft > 0) {
       interval = setInterval(() => setTimeLeft(t => t - 1), 1000);
     } else if (timeLeft === 0 && isActive) {
       setIsActive(false);
-      alert(mode === 'focus' ? "Session Complete! Take a break." : "Break Over! Back to work.");
+      
+      if (mode === 'focus' && onSessionComplete && !isCheating) {
+         onSessionComplete(customMinutes); 
+      }
+
+      alert(mode === 'focus' ? `Session Complete! You earned +${customMinutes * 2} XP. Take a break.` : "Break Over! Back to work.");
       if (document.fullscreenElement) document.exitFullscreen().catch(e => console.log(e));
       setMode(mode === 'focus' ? 'break' : 'focus');
       setTimeLeft(mode === 'focus' ? 5 * 60 : customMinutes * 60);
       setIsMinimized(false);
     }
     return () => clearInterval(interval);
-  }, [isActive, timeLeft, mode, customMinutes]);
+  }, [isActive, timeLeft, mode, customMinutes, isCheating, onSessionComplete]);
 
   // Anti-Cheat Logic (Uses Refs & Window Blur for 100% Strictness)
   useEffect(() => {
@@ -4953,6 +4949,7 @@ const FocusTimer = ({ onClose, onSessionComplete }) => {
         setIsCheating(true); 
         setIsMinimized(false); 
         playBeep(); // Instant hardware beep
+        if (document.fullscreenElement) document.exitFullscreen().catch(e => console.log(e));
       }
     };
 
@@ -4970,7 +4967,8 @@ const FocusTimer = ({ onClose, onSessionComplete }) => {
       document.removeEventListener("visibilitychange", handleVisibility);
       window.removeEventListener("blur", handleCheatDetection);
     };
-  }, []); // Khali array
+  }, []); 
+
   const toggleTimer = () => {
     if (!isActive) {
       // Audio Engine Unlock on Click (Hack for Chrome)
@@ -5016,13 +5014,12 @@ const FocusTimer = ({ onClose, onSessionComplete }) => {
     return `${m}:${s}`;
   };
 
-  // NAYA: Custom Minutes Setter jab timer band ho
+  // Custom Minutes Setter jab timer band ho
   useEffect(() => {
     if (!isActive && mode === 'focus' && !isCheating) {
       setTimeLeft(customMinutes * 60);
     }
   }, [customMinutes, isActive, mode, isCheating]);
-
 
   if (isMinimized) {
     return (
@@ -5114,8 +5111,7 @@ const DashboardScreen = ({ navigate, userData, onRoadmapGenerate }) => {
   if (userData.activeRoadmap && userData.activeRoadmap.roadmapData) {
     userData.activeRoadmap.roadmapData.forEach(phase => totalTasks += (phase.tasks || []).length);
   }
-  const syllabusPct = totalTasks > 0 ? Math.round((userData.completedTasks.length / totalTasks) * 100) : 0;
-  
+  const syllabusPct = totalTasks > 0 ? Math.round(((userData.completedTasks || []).length / totalTasks) * 100) : 0;
   const dailyProgress = userData.dailyProgress || { xpGained: 0, targetXp: 120 };
   const targetXp = dailyProgress.targetXp || 120;
   const currentXp = dailyProgress.xpGained || 0;
@@ -5963,7 +5959,7 @@ const handleLogin = async ({ email, password, name, isLogin }) => {
         ...xpUpdates,
         clearedPhases: newClearedPhases, // <--- SAVE UNLOCKED PHASES
         testHistory: [resultData, ...(prev.testHistory || [])].slice(0, 10),
-        completedTasks: [...prev.completedTasks, ...newlyCompleted]
+        completedTasks: [...(prev.completedTasks || []), ...newlyCompleted]
       };
     });
   };
@@ -5972,22 +5968,22 @@ const handleLogin = async ({ email, password, name, isLogin }) => {
   };
 
   const handleTaskDone = (taskId, xpString) => {
-    setUserData(prev => {
-      // Prevent double marking
-      if (prev.completedTasks.includes(taskId)) return prev;
+  setUserData(prev => {
+    // Safely check if task is already completed
+    if ((prev.completedTasks || []).includes(taskId)) return prev;
 
-      // Extract number from strings like "+120 XP"
-      const gain = parseInt(String(xpString).replace(/[^0-9]/g, '')) || 0;
-      
-      const xpUpdates = calculateNewXPAndStreak(prev, gain);
+    // Extract number from strings like "+120 XP"
+    const gain = parseInt(String(xpString).replace(/[^0-9]/g, '')) || 0;
+    
+    const xpUpdates = calculateNewXPAndStreak(prev, gain);
 
-      return {
-        ...prev,
-        ...xpUpdates,
-        completedTasks: [...prev.completedTasks, taskId]
-      };
-    });
-  };
+    return {
+      ...prev,
+      ...xpUpdates,
+      completedTasks: [...(prev.completedTasks || []), taskId]
+    };
+  });
+};
   if (!currentUser) return <AuthScreen onLogin={handleLogin} authError={authError} />;
 
   // YAHAN SE AAPKA PURANA RETURN (...) WALA UI SHURU HOTA HAI
@@ -6012,7 +6008,7 @@ const handleLogin = async ({ email, password, name, isLogin }) => {
                 <BarChart2 className="w-4 h-4 mr-2" /> Analytics
               </button>
               <button onClick={() => navigate('strategy')} className="hidden md:flex text-slate-300 hover:text-white text-sm font-medium px-4 py-2 transition-colors items-center">
-                <Lightbulb className="w-4 h-4 mr-2 text-amber-400" /> AI Strategy
+                <Lightbulb className="w-4 h-4 mr-2 text-amber-400" /> Strategy
               </button>
               <button onClick={() => navigate('syllabus')} className="hidden md:flex text-slate-300 hover:text-white text-sm font-medium px-4 py-2 transition-colors items-center">
                 <List className="w-4 h-4 mr-2" /> Syllabus Library
